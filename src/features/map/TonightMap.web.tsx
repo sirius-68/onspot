@@ -6,7 +6,7 @@ import { colors, radii, spacing, typography } from '@/theme/tokens';
 import type { TonightMapProps } from './TonightMap';
 
 /**
- * Web build: the native Mapbox SDK isn't used on web, so show the same venues as a list.
+ * Web build: the native MapLibre SDK isn’t used on web, so show the same venues as a list.
  * The web export exists for the Squad vote page (Phase 5), not as a full map client.
  */
 export function TonightMap({ venues, selectedId, onSelect }: TonightMapProps) {
@@ -16,7 +16,7 @@ export function TonightMap({ venues, selectedId, onSelect }: TonightMapProps) {
       <FlatList
         data={venues}
         keyExtractor={(v) => v.id}
-        contentContainerStyle={{ gap: spacing.sm, paddingBottom: 160 }}
+        contentContainerStyle={{ gap: spacing.sm, paddingBottom: 200 }}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => onSelect(item)}
@@ -34,7 +34,7 @@ export function TonightMap({ venues, selectedId, onSelect }: TonightMapProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { ...StyleSheet.absoluteFill, padding: spacing.lg, paddingTop: 96 },
+  wrap: { ...StyleSheet.absoluteFill, padding: spacing.lg, paddingTop: 190 },
   note: { ...typography.body, color: colors.textMuted, marginBottom: spacing.md },
   row: {
     backgroundColor: colors.surface,

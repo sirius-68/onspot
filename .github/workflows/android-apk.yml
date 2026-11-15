@@ -1,0 +1,84 @@
+name: Android APK
+
+# Builds an installable Android APK on GitHub's machines (no Expo account needed) and
+# publishes it as a pre-release you can download on your phone.
+# Without the optional EXPO_PUBLIC_* secrets the app runs in demo mode.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, build/apk-maplibre]
+    paths-ignore: ['**.md', 'docs/**', 'plans/**', 'supabase/**']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_MAP_STYLE_URL: ${{ secrets.EXPO_PUBLIC_MAP_STYLE_URL }}
+      EXPO_PUBLIC_POSTHOG_KEY: ${{ secrets.EXPO_PUBLIC_POSTHOG_KEY }}
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate the native Android project
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Build release APK
+        working-directory: android
+        # Release build signed with the template's debug key: fine for sideloading and
+        # testing, not for the Play Store (that uses EAS/your upload key).
+        run: >
+          ./gradlew assembleRelease --no-daemon
+          -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Name the APK
+        id: apk
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          OUT="onspot-${{ github.run_number }}-${SHORT_SHA}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "$OUT"
+          echo "file=$OUT" >> "$GITHUB_OUTPUT"
+          ls -lh "$OUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onspot-apk
+          path: ${{ steps.apk.outputs.file }}
+          retention-days: 30
+
+      - name: Publish pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MODE="demo mode (sample venues)"
+          if [ -n "$EXPO_PUBLIC_SUPABASE_URL" ]; then MODE="live backend"; fi
+          gh release create "apk-${{ github.run_number }}" "${{ steps.apk.outputs.file }}" \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            --title "Onspot Android test build #${{ github.run_number }}" \
+            --notes "Install on Android: download the APK, open it, allow installs from this source. Build: ${MODE}. Commit ${{ github.sha }}."

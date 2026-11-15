@@ -1,9 +1,10 @@
-import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { venueInitials } from '@/features/venues/format';
 import type { NearbyVenue } from '@/features/venues/types';
-import { colors, radii, typography } from '@/theme/tokens';
+import { colors, shadow } from '@/theme/tokens';
+
+import { Avatar } from './Avatar';
+import { PhotoCard } from './PhotoCard';
 
 type Props = {
   venue: NearbyVenue;
@@ -11,63 +12,83 @@ type Props = {
   onPress?: (venue: NearbyVenue) => void;
 };
 
-/** Round photo pin with the venue name underneath (Snapchat/Hypelist-style map pin). */
+/** A stable tilt between -7° and 7° per venue, so cards look casually pinned. */
+export function tiltFor(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return (h % 15) - 7;
+}
+
+const W = 84;
+const H = 100;
+
+/**
+ * Map pin from the references: a tilted photo card with a white border, the avatar of the
+ * friend who posted there, and a blue dot marking the exact spot.
+ */
 export function VenuePin({ venue, selected = false, onPress }: Props) {
+  const live = venue.live_clip_count ?? 0;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${venue.name}, open venue`}
       onPress={() => onPress?.(venue)}
-      style={styles.wrap}
-      hitSlop={8}
+      style={[styles.wrap, selected && styles.selected]}
+      hitSlop={6}
     >
-      <View
-        style={[
-          styles.ring,
-          (venue.live_clip_count ?? 0) > 0 && styles.ringLive,
-          selected && styles.ringSelected,
-        ]}
-      >
-        {venue.cover_photo_url ? (
-          <Image source={{ uri: venue.cover_photo_url }} style={styles.photo} contentFit="cover" />
-        ) : (
-          <View style={[styles.photo, styles.fallback]}>
-            <Text style={styles.initials}>{venueInitials(venue.name)}</Text>
+      <View style={{ transform: [{ rotate: `${tiltFor(venue.id)}deg` }] }}>
+        <PhotoCard
+          uri={venue.cover_photo_url}
+          label={venue.name}
+          width={W}
+          height={H}
+          radius={20}
+          border={selected ? 4 : 3}
+          style={selected ? styles.cardSelected : undefined}
+        />
+        {venue.badge_avatar_url || venue.badge_name ? (
+          <Avatar
+            name={venue.badge_name ?? venue.name}
+            url={venue.badge_avatar_url}
+            size={30}
+            ring
+            style={styles.badge}
+          />
+        ) : live > 0 ? (
+          <View style={[styles.badge, styles.live]}>
+            <Text style={styles.liveText}>{live}</Text>
           </View>
-        )}
+        ) : null}
       </View>
-      <Text style={styles.label} numberOfLines={1}>
-        {venue.name}
-      </Text>
+      <View style={[styles.pin, selected && { backgroundColor: colors.accent }]} />
     </Pressable>
   );
 }
 
-const SIZE = 44;
-
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', maxWidth: 110 },
-  ring: {
-    padding: 2,
-    borderRadius: radii.pill,
+  wrap: { alignItems: 'center', paddingTop: 10, paddingHorizontal: 10 },
+  selected: { transform: [{ scale: 1.12 }] },
+  cardSelected: { borderColor: colors.white, shadowOpacity: 0.3 },
+  badge: { position: 'absolute', top: -9, left: -9 },
+  live: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.live,
     borderWidth: 2,
-    borderColor: colors.surfaceRaised,
-    backgroundColor: colors.surface,
-  },
-  ringLive: { borderColor: colors.live },
-  ringSelected: { borderColor: colors.accent },
-  photo: { width: SIZE, height: SIZE, borderRadius: SIZE / 2 },
-  fallback: {
-    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initials: { ...typography.caption, color: colors.text, fontWeight: '700' },
-  label: {
-    ...typography.caption,
-    color: colors.text,
-    marginTop: 2,
-    textShadowColor: 'rgba(0,0,0,0.9)',
-    textShadowRadius: 3,
+  liveText: { fontSize: 11, fontWeight: '800', color: colors.white },
+  pin: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.blue,
+    borderWidth: 3,
+    borderColor: colors.white,
+    marginTop: -6,
+    ...shadow,
   },
 });

@@ -22,9 +22,22 @@ Store checklist: [`docs/STORE.md`](docs/STORE.md)
 
 ## Stack
 
-Expo SDK 58 (React Native, TypeScript, Expo Router) · Mapbox (`@rnmapbox/maps`) ·
+Expo SDK 58 (React Native, TypeScript, Expo Router) · MapLibre (`@maplibre/maplibre-react-native`, open source, no key) ·
 `expo-camera` / `expo-video` · Supabase (Postgres + PostGIS, Auth, Realtime, Storage,
 pg_cron) · TanStack Query · Jest · pgTAP.
+
+## Try it on Android now
+
+Every push to `main` builds an APK on GitHub Actions (`.github/workflows/android-apk.yml`)
+and publishes it under **Releases** as a pre-release. Download it on your phone, open it and
+allow installs from that source. Without Supabase keys the app runs in **demo mode**: no sign-in,
+you're a guest with every role, and the whole app works on sample venues around your location
+(feed with stories, map with photo cards, venue pages, posting clips, chats with ticket splits,
+tonight's events, squads, friends, Host Live, Spotter mode, Admin). A local
+stand-in backend (`src/lib/demoBackend.ts`) answers the same calls as Supabase and saves
+everything on the phone; Profile → *Reset demo data* starts over.
+To build a live version, add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+as repository secrets (Settings → Secrets and variables → Actions) and re-run the workflow.
 
 ## Setup (adding your APIs)
 
@@ -49,11 +62,13 @@ pg_cron) · TanStack Query · Jest · pgTAP.
 4. **Phone build** (the map and camera need a development build, not Expo Go):
    ```bash
    npx eas-cli@latest login
-   npx eas-cli@latest env:create --name RNMAPBOX_MAPS_DOWNLOAD_TOKEN --value sk.… --visibility secret --environment development
    npx eas-cli@latest build --profile development --platform android
    ```
    Install the APK, run `npx expo start`, and open the project from the dev client.
-5. **Squad vote web page:** `npx expo export --platform web` then deploy `dist/`
+5. **Map style:** the default is the free CARTO Dark Matter style, fine for testing. Before a
+   commercial launch, set `EXPO_PUBLIC_MAP_STYLE_URL` to a style you have rights to use
+   (your own tiles, or a provider such as MapTiler or Stadia Maps).
+6. **Squad vote web page:** `npx expo export --platform web` then deploy `dist/`
    (e.g. `npx eas-cli@latest deploy`). On other static hosts, rewrite `/s/*` to
    `/s/[code].html`. Set `EXPO_PUBLIC_WEB_URL` to that address.
 

@@ -53,8 +53,24 @@ export function VenueScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}>
-        <ClipCarousel clips={clips.data ?? []} height={460} onReport={reportClip} />
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}>
+        <View>
+          <ClipCarousel
+            clips={clips.data ?? []}
+            height={460}
+            onReport={reportClip}
+            fallbackImage={venue.data.cover_photo_url}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Post a live clip here"
+            onPress={() => requireProfile() && router.push('/capture')}
+            style={styles.fab}
+          >
+            <Ionicons name="videocam" size={18} color={colors.white} />
+            <Text style={styles.fabText}>Show the vibe</Text>
+          </Pressable>
+        </View>
         <View style={styles.content}>
           <Text style={styles.name}>{v.name}</Text>
           {!!meta && <Text style={styles.meta}>{meta}</Text>}
@@ -73,17 +89,7 @@ export function VenueScreen() {
         style={[styles.back, { top: insets.top + spacing.sm }]}
         hitSlop={10}
       >
-        <Ionicons name="chevron-back" size={22} color={colors.text} />
-      </Pressable>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Post a live clip here"
-        onPress={() => requireProfile() && router.push('/capture')}
-        style={[styles.fab, { bottom: insets.bottom + spacing.lg }]}
-      >
-        <Ionicons name="videocam" size={20} color="#fff" />
-        <Text style={styles.fabText}>Show the vibe</Text>
+        <Ionicons name="chevron-back" size={22} color={colors.white} />
       </Pressable>
     </View>
   );
@@ -108,6 +114,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
+    top: 460 - 22,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -116,5 +123,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  fabText: { ...typography.heading, color: '#fff' },
+  fabText: { ...typography.heading, color: colors.white },
 });

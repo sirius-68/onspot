@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNearbyVenues } from '@/features/map/useNearbyVenues';
 import { formatDistance } from '@/features/venues/format';
 import type { NearbyVenue } from '@/features/venues/types';
+import { env } from '@/lib/env';
 import { ensureSession, supabase } from '@/lib/supabase';
 import { track } from '@/lib/analytics';
 import { colors, radii, spacing, typography } from '@/theme/tokens';
@@ -21,8 +22,9 @@ import type { CapturedClip, PostStage } from './types';
 import { liveClipsKey } from './useLiveClips';
 
 const MAX_SECONDS = 15;
-/** Venues further than this from where you recorded aren't offered. */
-const PICK_RADIUS_M = 150;
+/** Venues further than this from where you recorded aren't offered. Demo venues are spread
+ * up to ~600 m around you, so demo mode offers all of them. */
+const PICK_RADIUS_M = env.demoMode ? 3000 : 150;
 
 const STAGE_TEXT: Record<PostStage, string> = {
   idle: '',
@@ -53,7 +55,7 @@ export function CaptureScreen() {
   if (!camPerm || !micPerm) return <View style={styles.black} />;
   if (!camPerm.granted || !micPerm.granted) {
     return (
-      <SafeAreaView style={[styles.black, styles.center]}>
+      <SafeAreaView style={[styles.sheet, styles.center]}>
         <Text style={styles.title}>Show the vibe</Text>
         <Text style={styles.body}>
           Onspot needs the camera and microphone to record live clips. Clips are only shot in the
@@ -191,7 +193,7 @@ export function CaptureScreen() {
           style={styles.close}
           hitSlop={12}
         >
-          <Ionicons name="close" size={26} color={colors.text} />
+          <Ionicons name="close" size={26} color={colors.white} />
         </Pressable>
         <View style={styles.bottom}>
           {!!error && <Text style={styles.error}>{error}</Text>}
@@ -243,13 +245,13 @@ const styles = StyleSheet.create({
   cameraUi: { flex: 1, justifyContent: 'space-between' },
   close: { padding: spacing.lg },
   bottom: { alignItems: 'center', paddingBottom: spacing.xxl, gap: spacing.md },
-  hint: { ...typography.caption, color: colors.text },
+  hint: { ...typography.caption, color: colors.white },
   shutter: {
     width: 76,
     height: 76,
     borderRadius: 38,
     borderWidth: 6,
-    borderColor: colors.text,
+    borderColor: colors.white,
     backgroundColor: colors.accent,
   },
   shutterRec: { backgroundColor: colors.danger, borderRadius: 18 },

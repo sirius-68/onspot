@@ -10,8 +10,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
-  userInterfaceStyle: 'dark',
-  backgroundColor: '#0B0B12',
+  userInterfaceStyle: 'light',
+  backgroundColor: '#FFFFFF',
   ios: {
     bundleIdentifier: 'app.onspot',
     supportsTablet: false,
@@ -19,7 +19,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: 'app.onspot',
     adaptiveIcon: {
-      backgroundColor: '#0B0B12',
+      backgroundColor: '#FFFFFF',
       foregroundImage: './assets/android-icon-foreground.png',
       backgroundImage: './assets/android-icon-background.png',
       monochromeImage: './assets/android-icon-monochrome.png',
@@ -33,8 +33,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-dev-client',
-    // The Mapbox download token is read from RNMAPBOX_MAPS_DOWNLOAD_TOKEN at build time.
-    ['@rnmapbox/maps', { RNMapboxMapsImpl: 'mapbox' }],
+    // MapLibre: open-source maps, no API key or download token needed.
+    '@maplibre/maplibre-react-native',
     [
       'expo-camera',
       {

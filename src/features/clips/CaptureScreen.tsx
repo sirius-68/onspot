@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNearbyVenues } from '@/features/map/useNearbyVenues';
 import { formatDistance } from '@/features/venues/format';
 import type { NearbyVenue } from '@/features/venues/types';
+import { env } from '@/lib/env';
 import { ensureSession, supabase } from '@/lib/supabase';
 import { track } from '@/lib/analytics';
 import { colors, radii, spacing, typography } from '@/theme/tokens';
@@ -21,8 +22,9 @@ import type { CapturedClip, PostStage } from './types';
 import { liveClipsKey } from './useLiveClips';
 
 const MAX_SECONDS = 15;
-/** Venues further than this from where you recorded aren't offered. */
-const PICK_RADIUS_M = 150;
+/** Venues further than this from where you recorded aren't offered. Demo venues are spread
+ * up to ~600 m around you, so demo mode offers all of them. */
+const PICK_RADIUS_M = env.demoMode ? 3000 : 150;
 
 const STAGE_TEXT: Record<PostStage, string> = {
   idle: '',

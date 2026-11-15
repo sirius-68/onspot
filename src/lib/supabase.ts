@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
+import { DemoBackend } from './demoBackend';
 import { env } from './env';
 
 export function createSupabaseClient(url: string, anonKey: string): SupabaseClient {
@@ -17,12 +18,13 @@ export function createSupabaseClient(url: string, anonKey: string): SupabaseClie
   });
 }
 
-// A placeholder URL keeps the client constructible when .env is missing; calls then fail
-// loudly and the missing-env warning in env.ts explains why.
-export const supabase = createSupabaseClient(
-  env.supabaseUrl || 'https://missing-env.invalid',
-  env.supabaseAnonKey || 'missing-anon-key',
-);
+/** Set in demo mode: the local stand-in backend (see demoBackend.ts). */
+export const demoBackend = env.demoMode ? new DemoBackend() : null;
+
+// Without the Supabase keys the app talks to the local demo backend instead, so every
+// screen works without signing in.
+export const supabase: SupabaseClient =
+  demoBackend?.asClient() ?? createSupabaseClient(env.supabaseUrl, env.supabaseAnonKey);
 
 /**
  * Makes sure there is a session. Until accounts land (Phase 3) every visitor gets an

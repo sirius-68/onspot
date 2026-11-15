@@ -1,7 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { demoVenueDetail } from '@/lib/demo';
-import { env } from '@/lib/env';
 import { unwrap } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
@@ -45,11 +43,6 @@ export function useVenue(id: string | null) {
   return useQuery({
     queryKey: venueKey(id ?? ''),
     queryFn: async () => {
-      if (env.demoMode) {
-        const demo = demoVenueDetail(id as string);
-        if (!demo) throw new Error('Venue not found');
-        return demo;
-      }
       const data = unwrap(
         await supabase.rpc('get_venue', { p_venue_id: id }),
       ) as VenueDetail | null;

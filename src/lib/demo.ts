@@ -1,10 +1,24 @@
 // Demo mode: when the Supabase keys aren't set, the app shows sample venues placed around
-// wherever you are, so the map, filters, cards and venue pages can be tried on a phone
-// before the backend exists. Nothing here is real data.
+// wherever you are, so the whole app can be tried on a phone before the backend exists.
+// Nothing here is real data. The rest of the local backend lives in demoBackend.ts.
 
 import type { VenueFilters } from '@/features/map/filters';
 import type { LatLng, NearbyVenue, VenueCategory } from '@/features/venues/types';
-import type { VenueDetail } from '@/features/venues/useVenue';
+import type { CapacityLevel, VenueDetail } from '@/features/venues/useVenue';
+
+type DemoEvent = VenueDetail['events'][number];
+
+/** Changes made while using the demo (host updates, posted clips), layered over the seeds. */
+export type DemoOverlay = {
+  /** Clips posted in the last 60 minutes, per venue. */
+  liveClips?: Record<string, number>;
+  status?: Record<
+    string,
+    { capacity_level: CapacityLevel; queue_minutes: number; updated_at: string }
+  >;
+  events?: Record<string, DemoEvent[]>;
+  hosted?: string[];
+};
 
 type DemoSeed = {
   name: string;
@@ -183,13 +197,31 @@ export function resetDemo() {
   anchor = null;
 }
 
-export function demoVenues(center: LatLng): NearbyVenue[] {
+export function demoAnchor(): LatLng | null {
+  return anchor;
+}
+
+export function demoVenueName(id: string): string | null {
+  return SEEDS[Number(id.replace('demo-', '')) - 1]?.name ?? null;
+}
+
+export function demoVenueIds(): string[] {
+  return SEEDS.map((_, i) => `demo-${i + 1}`);
+}
+
+export function demoVenueSeed(id: string) {
+  return SEEDS[Number(id.replace('demo-', '')) - 1] ?? null;
+}
+
+export function demoVenues(center: LatLng, overlay: DemoOverlay = {}): NearbyVenue[] {
   const a = anchored(center);
   return SEEDS.map((s, i) => {
+    const id = `demo-${i + 1}`;
     const lat = a.lat + s.dLat;
     const lng = a.lng + s.dLng;
+    const posted = overlay.liveClips?.[id] ?? 0;
     return {
-      id: `demo-${i + 1}`,
+      id,
       name: s.name,
       category: s.category,
       lat,
@@ -199,9 +231,9 @@ export function demoVenues(center: LatLng): NearbyVenue[] {
       cover_photo_url: null,
       price_band: s.price,
       music_tags: s.tags,
-      vibe_score: s.vibe,
-      live_clip_count: s.live,
-      capacity_level: s.capacity,
+      vibe_score: Math.min(100, s.vibe + posted * 10),
+      live_clip_count: s.live + posted,
+      capacity_level: overlay.status?.[id]?.capacity_level ?? s.capacity,
     };
   }).sort((x, y) => x.distance_m - y.distance_m);
 }
@@ -211,10 +243,12 @@ export function searchDemoVenues(
   center: LatLng,
   filters: VenueFilters,
   radiusM = 3000,
+  overlay: DemoOverlay = {},
 ): NearbyVenue[] {
   const q = filters.query.trim().toLowerCase();
-  return demoVenues(center).filter((v, i) => {
-    const seed = SEEDS[Number(v.id.slice(5)) - 1] ?? SEEDS[i];
+  return demoVenues(center, overlay).filter((v) => {
+    const seed = demoVenueSeed(v.id);
+    const hasEvent = !!seed?.event || (overlay.events?.[v.id]?.length ?? 0) > 0;
     if (v.distance_m > radiusM) return false;
     if (
       q &&
@@ -228,12 +262,16 @@ export function searchDemoVenues(
     if (filters.categories.length > 0 && !filters.categories.includes(v.category)) return false;
     if (filters.maxPrice !== null && v.price_band !== null && v.price_band > filters.maxPrice)
       return false;
-    if (filters.tonightOnly && !seed?.event) return false;
+    if (filters.tonightOnly && !hasEvent) return false;
     return true;
   });
 }
 
-export function demoVenueDetail(id: string, now: Date = new Date()): VenueDetail | null {
+export function demoVenueDetail(
+  id: string,
+  now: Date = new Date(),
+  overlay: DemoOverlay = {},
+): VenueDetail | null {
   const index = Number(id.replace('demo-', '')) - 1;
   const seed = SEEDS[index];
   const a = anchor;
@@ -249,27 +287,32 @@ export function demoVenueDetail(id: string, now: Date = new Date()): VenueDetail
     music_tags: seed.tags,
     lat: a.lat + seed.dLat,
     lng: a.lng + seed.dLng,
-    vibe_score: seed.vibe,
-    is_host: false,
-    status: seed.capacity
-      ? {
-          capacity_level: seed.capacity,
-          queue_minutes: seed.capacity === 'packed' ? 20 : 5,
-          updated_at: now.toISOString(),
-        }
-      : null,
-    events: seed.event
-      ? [
-          {
-            id: `${id}-event`,
-            title: seed.event.title,
-            starts_at: start.toISOString(),
-            ends_at: new Date(start.getTime() + 5 * 3600_000).toISOString(),
-            price_text: seed.event.price,
-            ticket_url: null,
-            spots_left: seed.event.spots,
-          },
-        ]
-      : [],
+    vibe_score: Math.min(100, seed.vibe + (overlay.liveClips?.[id] ?? 0) * 10),
+    is_host: overlay.hosted?.includes(id) ?? false,
+    status: overlay.status?.[id]
+      ? overlay.status[id]
+      : seed.capacity
+        ? {
+            capacity_level: seed.capacity,
+            queue_minutes: seed.capacity === 'packed' ? 20 : 5,
+            updated_at: now.toISOString(),
+          }
+        : null,
+    events: [
+      ...(overlay.events?.[id] ?? []),
+      ...(seed.event
+        ? [
+            {
+              id: `${id}-event`,
+              title: seed.event.title,
+              starts_at: start.toISOString(),
+              ends_at: new Date(start.getTime() + 5 * 3600_000).toISOString(),
+              price_text: seed.event.price,
+              ticket_url: null,
+              spots_left: seed.event.spots,
+            },
+          ]
+        : []),
+    ].sort((x, y) => x.starts_at.localeCompare(y.starts_at)),
   };
 }

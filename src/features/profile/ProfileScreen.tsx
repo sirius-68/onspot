@@ -17,6 +17,7 @@ import {
 import { friendsKey, useFriends } from '@/features/friends/hooks';
 import { venueInitials } from '@/features/venues/format';
 import { track } from '@/lib/analytics';
+import { env } from '@/lib/env';
 import { errorText, unwrap } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import { colors, radii, spacing, typography } from '@/theme/tokens';
@@ -190,33 +191,65 @@ export function ProfileScreen() {
         )}
 
         <LegalLinks />
-        <Button
-          title="Sign out"
-          variant="secondary"
-          onPress={() => act(() => supabase.auth.signOut())}
-        />
-        <Button
-          title="Delete my account"
-          variant="danger"
-          onPress={() =>
-            Alert.alert(
-              'Delete your account?',
-              'Your profile, friends, clips and votes are deleted. This can’t be undone.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: () =>
-                    act(async () => {
-                      unwrap(await supabase.rpc('delete_my_account'));
-                      await supabase.auth.signOut();
-                    }),
-                },
-              ],
-            )
-          }
-        />
+        {env.demoMode ? (
+          <>
+            <Text style={styles.demoNote}>
+              Demo mode: you’re signed in as a guest and everything is saved on this phone only.
+            </Text>
+            <Button
+              title="Reset demo data"
+              variant="secondary"
+              onPress={() =>
+                Alert.alert(
+                  'Reset demo data?',
+                  'Clears your clips, squads, friends and host updates.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Reset',
+                      style: 'destructive',
+                      onPress: () =>
+                        act(async () => {
+                          await supabase.auth.signOut();
+                          await queryClient.resetQueries();
+                        }),
+                    },
+                  ],
+                )
+              }
+            />
+          </>
+        ) : (
+          <>
+            <Button
+              title="Sign out"
+              variant="secondary"
+              onPress={() => act(() => supabase.auth.signOut())}
+            />
+            <Button
+              title="Delete my account"
+              variant="danger"
+              onPress={() =>
+                Alert.alert(
+                  'Delete your account?',
+                  'Your profile, friends, clips and votes are deleted. This can’t be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: () =>
+                        act(async () => {
+                          unwrap(await supabase.rpc('delete_my_account'));
+                          await supabase.auth.signOut();
+                        }),
+                    },
+                  ],
+                )
+              }
+            />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -241,6 +274,7 @@ function LegalLinks() {
 }
 
 const styles = StyleSheet.create({
+  demoNote: { ...typography.caption, color: colors.warning },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md },

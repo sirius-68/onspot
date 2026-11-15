@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
-import { env } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
 import { fetchLiveClips } from './api';
@@ -17,7 +16,7 @@ export function useLiveClips(venueId: string | null) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!venueId || env.demoMode) return;
+    if (!venueId) return;
     const channel = supabase
       .channel(`clips:${venueId}`)
       .on(
@@ -33,8 +32,7 @@ export function useLiveClips(venueId: string | null) {
 
   return useQuery({
     queryKey: liveClipsKey(venueId ?? ''),
-    queryFn: () =>
-      env.demoMode ? Promise.resolve([]) : fetchLiveClips(supabase, venueId as string),
+    queryFn: () => fetchLiveClips(supabase, venueId as string),
     enabled: !!venueId,
     refetchInterval: 60_000,
   });

@@ -1,9 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useQuery } from '@tanstack/react-query';
 
-import { EMPTY_FILTERS } from '@/features/map/filters';
-import { searchDemoVenues } from '@/lib/demo';
-import { env } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 import type { LatLng, NearbyVenue } from '@/features/venues/types';
 
@@ -32,10 +29,7 @@ export function useNearbyVenues(center: LatLng | null, radiusM: number = DEFAULT
   const key = center ? roundCenter(center) : null;
   return useQuery({
     queryKey: ['venues-near', key?.lat, key?.lng, radiusM],
-    queryFn: () =>
-      env.demoMode
-        ? Promise.resolve(searchDemoVenues(key as LatLng, EMPTY_FILTERS, radiusM))
-        : fetchNearbyVenues(supabase, key as LatLng, radiusM),
+    queryFn: () => fetchNearbyVenues(supabase, key as LatLng, radiusM),
     enabled: key !== null,
   });
 }

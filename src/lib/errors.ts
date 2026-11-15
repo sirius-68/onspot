@@ -19,6 +19,9 @@ const MESSAGES: Record<string, string> = {
   spotters_only: 'Spotter mode is for approved Spotters.',
   admin_only: 'Admins only.',
   unknown_event: 'That event no longer exists.',
+  demo_mode: 'Not available in demo mode. Add the Supabase keys to turn on accounts.',
+  unknown_venue: 'That venue isn’t on Onspot.',
+  upload_missing: 'The video didn’t upload. Try again with better signal.',
 };
 
 export function errorText(

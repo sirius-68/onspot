@@ -299,7 +299,7 @@ highest seam that shows it (pgTAP, Jest or Maestro) → fix → test green → n
 | Owner request 2026-11-16 | "Build the complete app; APIs later": Phases 2–8 built in one branch/PR (`build/phases-2-8`) | Faster than one PR per phase; device checks happen once keys exist |
 | Account deletion | In-app (`delete_my_account`) | Google Play requires a deletion path for apps with accounts |
 | APK delivery (2026-11-16) | `.github/workflows/android-apk.yml`: prebuild + `gradlew assembleRelease` (debug-key signed, arm64 + armv7), uploaded as an artifact and a GitHub pre-release | The build sandbox can't reach Google's Maven; no Expo account yet for EAS. Play Store builds still go through EAS with an upload key |
-| Demo mode | No Supabase keys → 12 sample venues anchored around the user (`src/lib/demo.ts`), same filters as `search_venues`; accounts/clips disabled with a banner | Owner wants to try the app on a phone before adding APIs |
+| Demo mode | No Supabase keys → `src/lib/demoBackend.ts` replaces the Supabase client: same RPC names, state saved in AsyncStorage, clips saved as files on the phone. Guest is signed in with role `admin` and hosts two venues; 12 sample venues anchored around the user (`src/lib/demo.ts`); sample friends; geofence relaxed | Owner asked (2026-11-16) to use the full app without authenticating before adding APIs. Screens stay unchanged, so switching to the real backend is only adding the keys |
 
 ## Not yet specified
 

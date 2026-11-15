@@ -124,7 +124,7 @@ export function TonightScreen() {
         </Pressable>
         {env.demoMode && (
           <Text style={styles.demo} testID="demo-banner">
-            Demo mode · sample venues around you. Add the Supabase keys to go live.
+            Demo mode · signed in as a guest, everything is saved on this phone only.
           </Text>
         )}
         {location.permission === 'denied' && (

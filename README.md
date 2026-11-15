@@ -30,8 +30,11 @@ pg_cron) · TanStack Query · Jest · pgTAP.
 
 Every push to `main` builds an APK on GitHub Actions (`.github/workflows/android-apk.yml`)
 and publishes it under **Releases** as a pre-release. Download it on your phone, open it and
-allow installs from that source. Without Supabase keys the app runs in **demo mode**: sample
-venues appear around your location so you can try the map, filters, cards and venue pages.
+allow installs from that source. Without Supabase keys the app runs in **demo mode**: no sign-in,
+you're a guest with every role, and the whole app works on sample venues around your location
+(map, venue pages, posting clips, squads, friends, Host Live, Spotter mode, Admin). A local
+stand-in backend (`src/lib/demoBackend.ts`) answers the same calls as Supabase and saves
+everything on the phone; Profile → *Reset demo data* starts over.
 To build a live version, add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 as repository secrets (Settings → Secrets and variables → Actions) and re-run the workflow.
 

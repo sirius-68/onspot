@@ -1,26 +1,23 @@
-import Mapbox, {
+import {
   Camera,
-  CircleLayer,
-  LocationPuck,
-  MapView,
-  MarkerView,
-  ShapeSource,
-  StyleURL,
-  SymbolLayer,
-} from '@rnmapbox/maps';
-import { useEffect, useMemo, useRef } from 'react';
+  type CameraRef,
+  GeoJSONSource,
+  Layer,
+  Map,
+  Marker,
+  UserLocation,
+} from '@maplibre/maplibre-react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { FriendBubble } from '@/components/FriendBubble';
 import { VenuePin } from '@/components/VenuePin';
 import type { FriendLocation } from '@/features/friends/api';
-import { env } from '@/lib/env';
 import type { LatLng, NearbyVenue } from '@/features/venues/types';
+import { env } from '@/lib/env';
 import { colors } from '@/theme/tokens';
 
 import { PHOTO_PIN_MIN_ZOOM, pickPhotoPinVenues, venuesToFeatureCollection } from './geo';
-
-void Mapbox.setAccessToken(env.mapboxToken || null);
 
 export type TonightMapProps = {
   center: LatLng;
@@ -32,8 +29,8 @@ export type TonightMapProps = {
 };
 
 /**
- * Native map. Far out, venues are drawn as clustered GL layers (cheap); from
- * PHOTO_PIN_MIN_ZOOM in, the nearest venues get photo pins (React views).
+ * Native map (MapLibre, open source, no API key). Far out, venues are drawn as clustered GL
+ * layers (cheap); from PHOTO_PIN_MIN_ZOOM in, the nearest venues get photo pins (views).
  */
 export function TonightMap({
   center,
@@ -43,49 +40,47 @@ export function TonightMap({
   selectedId,
   onSelect,
 }: TonightMapProps) {
-  const cameraRef = useRef<Camera>(null);
+  const cameraRef = useRef<CameraRef>(null);
+  const [zoom, setZoom] = useState(15);
   const shape = useMemo(() => venuesToFeatureCollection(venues), [venues]);
   const pinVenues = useMemo(() => pickPhotoPinVenues(venues), [venues]);
+  const showPins = zoom >= PHOTO_PIN_MIN_ZOOM;
 
   // Move the camera only when the centre really changes (e.g. location arrives), so the
   // user's own pans and zooms aren't reset on every render.
   useEffect(() => {
-    cameraRef.current?.setCamera({
-      centerCoordinate: [center.lng, center.lat],
-      zoomLevel: 15,
-      animationDuration: 600,
-    });
+    cameraRef.current?.easeTo({ center: [center.lng, center.lat], zoom: 15, duration: 600 });
   }, [center.lat, center.lng]);
 
   return (
-    <MapView
+    <Map
       style={StyleSheet.absoluteFill}
-      styleURL={StyleURL.Dark}
-      logoEnabled
-      attributionEnabled
-      scaleBarEnabled={false}
-      compassEnabled={false}
+      mapStyle={env.mapStyleUrl}
+      logo={false}
+      attribution
+      compass={false}
+      scaleBar={false}
       onPress={() => onSelect(null)}
+      onRegionDidChange={(e) => setZoom(e.nativeEvent.zoom)}
     >
-      <Camera
-        ref={cameraRef}
-        defaultSettings={{ centerCoordinate: [center.lng, center.lat], zoomLevel: 15 }}
-      />
-      {showUserLocation && <LocationPuck puckBearingEnabled pulsing={{ isEnabled: true }} />}
+      <Camera ref={cameraRef} initialViewState={{ center: [center.lng, center.lat], zoom: 15 }} />
+      {showUserLocation && <UserLocation />}
 
-      <ShapeSource
+      <GeoJSONSource
         id="venues"
-        shape={shape}
+        data={shape}
         cluster
         clusterRadius={48}
-        clusterMaxZoomLevel={PHOTO_PIN_MIN_ZOOM - 1}
+        clusterMaxZoom={PHOTO_PIN_MIN_ZOOM - 1}
         onPress={(e) => {
-          const feature = e.features[0];
-          if (!feature || feature.properties?.cluster) {
-            cameraRef.current?.setCamera({
-              centerCoordinate: [e.coordinates.longitude, e.coordinates.latitude],
-              zoomLevel: PHOTO_PIN_MIN_ZOOM + 0.5,
-              animationDuration: 500,
+          const feature = e.nativeEvent.features[0];
+          if (!feature) return;
+          if (feature.properties?.cluster) {
+            const [lng, lat] = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+            cameraRef.current?.easeTo({
+              center: [lng, lat],
+              zoom: PHOTO_PIN_MIN_ZOOM + 0.5,
+              duration: 500,
             });
             return;
           }
@@ -93,65 +88,68 @@ export function TonightMap({
           if (venue) onSelect(venue);
         }}
       >
-        <CircleLayer
+        <Layer
           id="venue-clusters"
+          type="circle"
           filter={['has', 'point_count']}
-          maxZoomLevel={PHOTO_PIN_MIN_ZOOM}
-          style={{
-            circleColor: colors.accent,
-            circleOpacity: 0.85,
-            circleStrokeColor: colors.background,
-            circleStrokeWidth: 2,
-            circleRadius: ['step', ['get', 'point_count'], 16, 10, 20, 30, 26],
+          maxzoom={PHOTO_PIN_MIN_ZOOM}
+          paint={{
+            'circle-color': colors.accent,
+            'circle-opacity': 0.85,
+            'circle-stroke-color': colors.background,
+            'circle-stroke-width': 2,
+            'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 30, 26],
           }}
         />
-        <SymbolLayer
+        <Layer
           id="venue-cluster-count"
+          type="symbol"
           filter={['has', 'point_count']}
-          maxZoomLevel={PHOTO_PIN_MIN_ZOOM}
-          style={{
-            textField: ['get', 'point_count_abbreviated'],
-            textSize: 13,
-            textColor: colors.text,
-            textAllowOverlap: true,
+          maxzoom={PHOTO_PIN_MIN_ZOOM}
+          layout={{
+            'text-field': ['get', 'point_count_abbreviated'],
+            'text-size': 13,
+            'text-allow-overlap': true,
           }}
+          paint={{ 'text-color': colors.text }}
         />
-        <CircleLayer
+        <Layer
           id="venue-dots"
+          type="circle"
           filter={['!', ['has', 'point_count']]}
-          maxZoomLevel={PHOTO_PIN_MIN_ZOOM}
-          style={{
-            circleColor: colors.accent,
-            circleRadius: 6,
-            circleStrokeColor: colors.background,
-            circleStrokeWidth: 2,
+          maxzoom={PHOTO_PIN_MIN_ZOOM}
+          paint={{
+            'circle-color': colors.accent,
+            'circle-radius': 6,
+            'circle-stroke-color': colors.background,
+            'circle-stroke-width': 2,
           }}
         />
-      </ShapeSource>
+      </GeoJSONSource>
 
-      {pinVenues.map((venue) => (
-        <MarkerView
-          key={venue.id}
-          coordinate={[venue.lng, venue.lat]}
-          anchor={{ x: 0.5, y: 0.5 }}
-          minZoom={PHOTO_PIN_MIN_ZOOM}
-          allowOverlap={false}
-          isSelected={venue.id === selectedId}
-        >
-          <VenuePin venue={venue} selected={venue.id === selectedId} onPress={onSelect} />
-        </MarkerView>
-      ))}
+      {showPins &&
+        pinVenues.map((venue) => (
+          <Marker
+            key={venue.id}
+            id={`venue-${venue.id}`}
+            lngLat={[venue.lng, venue.lat]}
+            anchor="center"
+            selected={venue.id === selectedId}
+          >
+            <VenuePin venue={venue} selected={venue.id === selectedId} onPress={onSelect} />
+          </Marker>
+        ))}
 
       {friends.map((friend) => (
-        <MarkerView
+        <Marker
           key={`friend-${friend.user_id}`}
-          coordinate={[friend.lng, friend.lat]}
-          anchor={{ x: 0.5, y: 0.5 }}
-          allowOverlap
+          id={`friend-${friend.user_id}`}
+          lngLat={[friend.lng, friend.lat]}
+          anchor="center"
         >
           <FriendBubble friend={friend} />
-        </MarkerView>
+        </Marker>
       ))}
-    </MapView>
+    </Map>
   );
 }

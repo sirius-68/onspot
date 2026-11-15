@@ -33,8 +33,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-dev-client',
-    // The Mapbox download token is read from RNMAPBOX_MAPS_DOWNLOAD_TOKEN at build time.
-    ['@rnmapbox/maps', { RNMapboxMapsImpl: 'mapbox' }],
+    // MapLibre: open-source maps, no API key or download token needed.
+    '@maplibre/maplibre-react-native',
     [
       'expo-camera',
       {

@@ -41,7 +41,7 @@ jest.mock('expo-router', () => ({
   useIsFocused: () => true,
 }));
 
-jest.mock('@/lib/env', () => ({ missingEnv: [], env: { defaultCenter: { lat: 0, lng: 0 } } }));
+jest.mock('@/lib/env', () => ({ env: { demoMode: false, defaultCenter: { lat: 0, lng: 0 } } }));
 
 async function renderScreen() {
   return await render(

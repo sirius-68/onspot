@@ -2,7 +2,7 @@ import type { NearbyVenue } from '@/features/venues/types';
 
 export type VenueFeatureProps = { id: string; name: string };
 
-/** GeoJSON for the clustered venue layer. Mapbox positions are [lng, lat]. */
+/** GeoJSON for the clustered venue layer. Map positions are [lng, lat]. */
 export function venuesToFeatureCollection(
   venues: NearbyVenue[],
 ): GeoJSON.FeatureCollection<GeoJSON.Point, VenueFeatureProps> {

@@ -17,7 +17,7 @@ import { VenueCard } from '@/components/VenueCard';
 import { useRequireProfile } from '@/features/auth/useRequireProfile';
 import { useFriendLocations, useShareLocationWhileOpen } from '@/features/friends/hooks';
 import type { NearbyVenue } from '@/features/venues/types';
-import { missingEnv } from '@/lib/env';
+import { env } from '@/lib/env';
 import { colors, radii, spacing, typography } from '@/theme/tokens';
 
 import {
@@ -47,8 +47,7 @@ export function TonightScreen() {
   const liveCount = venues.filter((v) => (v.live_clip_count ?? 0) > 0).length;
 
   let status: string;
-  if (missingEnv.length > 0) status = 'Setup needed: add keys to .env';
-  else if (!location.ready || venuesQuery.isPending) status = 'Finding what’s on…';
+  if (!location.ready || venuesQuery.isPending) status = 'Finding what’s on…';
   else if (venuesQuery.isError) status = 'Couldn’t load venues — tap to retry';
   else if (venues.length === 0)
     status = hasActiveFilters(filters) ? 'No venues match' : 'No venues near you yet';
@@ -123,6 +122,11 @@ export function TonightScreen() {
           {venuesQuery.isFetching && <ActivityIndicator size="small" color={colors.accent} />}
           <Text style={styles.pillText}>{status}</Text>
         </Pressable>
+        {env.demoMode && (
+          <Text style={styles.demo} testID="demo-banner">
+            Demo mode · sample venues around you. Add the Supabase keys to go live.
+          </Text>
+        )}
         {location.permission === 'denied' && (
           <Text style={styles.hint}>
             Location is off — showing the default area. Turn it on to see venues near you.
@@ -182,6 +186,16 @@ const styles = StyleSheet.create({
   },
   pillText: { ...typography.caption, color: colors.text },
   hint: { ...typography.caption, color: colors.warning },
+  demo: {
+    ...typography.caption,
+    color: colors.background,
+    backgroundColor: colors.warning,
+    alignSelf: 'flex-start',
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    overflow: 'hidden',
+  },
   cardWrap: { position: 'absolute', left: spacing.md, right: spacing.md, bottom: spacing.md },
   fab: {
     position: 'absolute',

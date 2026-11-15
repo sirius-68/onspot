@@ -246,7 +246,7 @@ Known failure classes for this stack, how each shows up, and the first thing to 
 | # | Area | Symptom | First check / tool |
 | --- | --- | --- | --- |
 | D1 | Native build | Dev build fails or map/camera is blank in Expo Go | These modules need a dev client, not Expo Go; rebuild with `eas build --profile development`; check config plugins in `app.config.ts` |
-| D2 | Mapbox | Map tiles don't load | Download token vs public token; `RNMapboxMapsDownloadToken` set in EAS secrets; style URL valid |
+| D2 | Map (MapLibre) | Map tiles don't load / blank map | Style URL reachable from the phone (`EXPO_PUBLIC_MAP_STYLE_URL`); internet permission; attribution visible |
 | D3 | Location permission | No user dot on iOS or Android 12+ | Purpose strings present; handle "approximate" location (Android) and "precise off" (iOS); show a fallback to search by area |
 | D4 | Geofence false rejects | Clip rejected while inside a venue | Log accuracy radius; indoor GPS drift; tolerance = accuracy capped at e.g. 75 m plus a buffered polygon; compare with `ST_DWithin` |
 | D5 | Fake location | Clips from spoofed GPS | Android mock-location flag; server-side time check; rate limits per device; flag impossible travel |
@@ -278,7 +278,7 @@ highest seam that shows it (pgTAP, Jest or Maestro) → fix → test green → n
 | --- | --- | --- |
 | Client stack | Expo (React Native, TypeScript) | One codebase for Android/iOS/web; EAS cloud builds; OTA updates |
 | Backend | Supabase with PostGIS | Geofences and nearby search in SQL; Realtime for live clips; Auth and Storage included |
-| Map | Mapbox via `@rnmapbox/maps` | Custom night style, clustering, heatmap (gate Q5: yes) |
+| Map | ~~Mapbox via `@rnmapbox/maps`~~ → **MapLibre** (`@maplibre/maplibre-react-native` v11), style from `EXPO_PUBLIC_MAP_STYLE_URL` (default CARTO Dark Matter) | Changed 2026-11-16 at the owner's request to ship an APK now: no account, token or download key needed, so GitHub Actions can build it. Same clustering and photo pins |
 | Order | Risk-first: map → clips → accounts | The native modules and geofence rule are the riskiest parts |
 | Host tools | Inside the mobile app for the MVP | Avoids a second app before product proof (gate Q6: yes) |
 | Package manager | npm, with `npx expo install` for native modules | Expo's default; avoids pnpm hoisting issues with React Native |
@@ -290,7 +290,7 @@ highest seam that shows it (pgTAP, Jest or Maestro) → fix → test green → n
 | Git workflow | One branch + PR per phase into `main`, merged when CI is green | Gate Q10: yes |
 | DB tests | `scripts/db-test.sh` runs migrations, seed and pgTAP on a throwaway local Postgres (with a small Supabase shim for roles and `auth.uid()`); same script in CI. `supabase test db` also works where Docker is available | No Docker in the build sandbox; one script for local and CI keeps results comparable |
 | RPC naming | `venues_near(origin_lat, origin_lng, radius_m, max_results)` | Output columns are `lat`/`lng`; Postgres forbids input and output parameters with the same name |
-| Web map | `TonightMap.web.tsx` shows a venue list instead of a map | The web export exists for the Squad vote page; Mapbox native SDK is mobile-only |
+| Web map | `TonightMap.web.tsx` shows a venue list instead of a map | The web export exists for the Squad vote page; the native map SDK is mobile-only |
 | Camera | `expo-camera` (video mode) instead of `react-native-vision-camera` | Expo module with a config plugin; enough for ≤15 s clips; fewer native build issues |
 | Clip verification | SQL functions `create_clip` / `finalize_clip` (security definer) instead of an Edge Function | Geofence + time + upload checks in one place, tested with pgTAP; no extra deploy step |
 | Clip upload | Standard Storage upload with 3 retries and backoff; TUS resumable later if needed | ≤15 s clips are small; keeps the client simple |
@@ -298,6 +298,8 @@ highest seam that shows it (pgTAP, Jest or Maestro) → fix → test green → n
 | Crash reporting | Root error boundary now; Sentry added when the DSN exists | Avoids a native plugin that needs build tokens before launch |
 | Owner request 2026-11-16 | "Build the complete app; APIs later": Phases 2–8 built in one branch/PR (`build/phases-2-8`) | Faster than one PR per phase; device checks happen once keys exist |
 | Account deletion | In-app (`delete_my_account`) | Google Play requires a deletion path for apps with accounts |
+| APK delivery (2026-11-16) | `.github/workflows/android-apk.yml`: prebuild + `gradlew assembleRelease` (debug-key signed, arm64 + armv7), uploaded as an artifact and a GitHub pre-release | The build sandbox can't reach Google's Maven; no Expo account yet for EAS. Play Store builds still go through EAS with an upload key |
+| Demo mode | No Supabase keys → 12 sample venues anchored around the user (`src/lib/demo.ts`), same filters as `search_venues`; accounts/clips disabled with a banner | Owner wants to try the app on a phone before adding APIs |
 
 ## Not yet specified
 

@@ -1,6 +1,8 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import { searchDemoVenues } from '@/lib/demo';
+import { env } from '@/lib/env';
 import { unwrap } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import type { LatLng, NearbyVenue } from '@/features/venues/types';
@@ -29,8 +31,11 @@ export function useVenueSearch(
   return useQuery({
     queryKey: ['venue-search', key?.lat, key?.lng, radiusM, f],
     queryFn: async () =>
-      (unwrap(await supabase.rpc('search_venues', toSearchParams(key as LatLng, radiusM, f))) as
-        NearbyVenue[] | null) ?? [],
+      env.demoMode
+        ? searchDemoVenues(key as LatLng, f, radiusM)
+        : ((unwrap(
+            await supabase.rpc('search_venues', toSearchParams(key as LatLng, radiusM, f)),
+          ) as NearbyVenue[] | null) ?? []),
     enabled: key !== null,
     placeholderData: keepPreviousData,
     refetchInterval: 120_000,

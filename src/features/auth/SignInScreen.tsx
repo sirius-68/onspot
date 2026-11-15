@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Field } from '@/components/ui';
 import { track } from '@/lib/analytics';
+import { env } from '@/lib/env';
 import { errorText } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import { colors, spacing, typography } from '@/theme/tokens';
@@ -49,6 +50,11 @@ export function SignInScreen() {
             Sign in to post live clips, add friends and start squad votes. 18+ only.
           </Text>
 
+          {env.demoMode && (
+            <Text style={styles.error}>
+              Demo mode: accounts work once the Supabase keys are added to the app.
+            </Text>
+          )}
           {mode === null ? (
             <>
               <Field

@@ -6,7 +6,7 @@ import { colors, radii, spacing, typography } from '@/theme/tokens';
 import type { TonightMapProps } from './TonightMap';
 
 /**
- * Web build: the native Mapbox SDK isn't used on web, so show the same venues as a list.
+ * Web build: the native MapLibre SDK isn’t used on web, so show the same venues as a list.
  * The web export exists for the Squad vote page (Phase 5), not as a full map client.
  */
 export function TonightMap({ venues, selectedId, onSelect }: TonightMapProps) {

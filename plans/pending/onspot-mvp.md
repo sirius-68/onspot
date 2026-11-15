@@ -1,7 +1,7 @@
 # Onspot MVP — stack, build plan and debugging list
 
 Source: the Onspot research and strategy doc (Phase 1 "MVP: one neighbourhood").
-Status: **PROPOSAL — waiting for approval of the gate questions at the bottom.**
+Status: **APPROVED 2026-11-15** (owner answered "yes to all" to the gate questions). Executing.
 
 ## Goal
 
@@ -24,7 +24,7 @@ search and filters, Squad vote, directions, friends-only location, Host Live and
 | Shared web | Expo Router web export for the Squad vote page (friends vote without installing) | Same code, hosted on a static host |
 | Quality | ESLint + Prettier, Jest + React Native Testing Library, **pgTAP** for SQL/RLS tests, **Maestro** for end-to-end flows | Catch RLS holes and flow regressions early |
 | Observability | Sentry (crashes), PostHog (product analytics, funnels) | Debugging on real devices after launch nights |
-| CI | GitHub Actions: typecheck, lint, unit tests, Supabase DB tests; EAS Build on tags | Every PR green before merge |
+| CI | GitHub Actions: typecheck, lint, unit tests, DB tests (PostGIS + pgTAP via `scripts/db-test.sh`); EAS Build on tags | Every PR green before merge |
 
 **Alternatives considered:** Flutter (strong UI performance, but Dart; fewer ready-made pieces for
 Supabase Realtime + Mapbox + camera, and no shared web code with the vote page). Kotlin
@@ -35,8 +35,8 @@ building and iterating.
 
 ```
 onspot/
-  app/                 Expo Router screens (tabs: Map, Squads, Profile; host mode)
   src/
+    app/               Expo Router screens (tabs: Map, Squads, Profile; host mode)
     components/        UI pieces (VenuePin, VenueCard, ClipCarousel, VibeBadge...)
     features/          map, clips, venues, squads, auth, host, spotter
     lib/               supabase client, location, analytics, env
@@ -71,14 +71,14 @@ Files to touch: `package.json`, `app.json`/`app.config.ts`, `app/`, `src/lib/`, 
 
 #### Step 0.1: Scaffold the Expo app (Size: S)
 - Acceptance criteria: Expo Router + TypeScript strict + ESLint/Prettier + Jest run; tabs Map / Squads / Profile render placeholders; night theme tokens exist
-- Verification command: `pnpm typecheck && pnpm lint && pnpm test`
+- Verification command: `npm run typecheck && npm run lint && npm test`
 - Files likely touched: `package.json`, `app/_layout.tsx`, `app/(tabs)/*`, `src/theme/*`
 - Test seams: Jest render test of the tab layout
 - Blocked by: none
 
 #### Step 0.2: Supabase project wiring (Size: S)
 - Acceptance criteria: `supabase/` initialised; PostGIS enabled in the first migration; app reads URL/anon key from env; anonymous sign-in works
-- Verification command: `supabase db reset && supabase test db && pnpm test`
+- Verification command: `supabase db reset && supabase test db && npm test`
 - Files likely touched: `supabase/config.toml`, `supabase/migrations/0001_init.sql`, `src/lib/supabase.ts`, `.env.example`
 - Test seams: pgTAP smoke test; a Jest test of the client factory
 - Blocked by: 0.1
@@ -103,7 +103,7 @@ Files to touch: `supabase/migrations/0002_venues.sql`, `supabase/seed.sql`, `src
 
 #### Step 1.2: Map screen with photo pins (Size: M)
 - Acceptance criteria: Mapbox night style; user location dot after permission; venue photo pins from the RPC; clustering; tapping a pin opens a bottom venue card
-- Verification command: `pnpm test` + manual check on the dev build (`e2e/map.yaml` with Maestro)
+- Verification command: `npm test` + manual check on the dev build (`e2e/map.yaml` with Maestro)
 - Files likely touched: `src/features/map/*`, `src/components/VenuePin.tsx`, `src/components/VenueCard.tsx`
 - Test seams: Jest for the data hook; Maestro flow for the screen
 - Blocked by: 0.3, 1.1
@@ -170,7 +170,7 @@ Verified when: a user filters "under budget, within 20 min, music tag", opens a 
 
 #### Step 4.2: Search and filters (Size: S)
 - Acceptance criteria: search by name/category; chips for price, distance, music, open now; results update pins and list
-- Verification command: `supabase test db` (search RPC) + `pnpm test`
+- Verification command: `supabase test db` (search RPC) + `npm test`
 - Files likely touched: `src/features/search/*`, migration
 - Test seams: pgTAP on the RPC
 - Blocked by: 1.1
@@ -259,6 +259,10 @@ Known failure classes for this stack, how each shows up, and the first thing to 
 | D12 | Map performance | Low fps with many pins | Use clustered ShapeSource layers instead of React marker views for far zoom levels; images via sprite |
 | D13 | Store review | Rejection for user content or location | Report/block exists, moderation contact, age rating, background location not requested |
 | D14 | Crashes in the field | A tester reports "it closed" | Sentry issue + breadcrumbs; `adb logcat` for native crashes; reproduce with the Maestro flow |
+| D15 | Tooling offline | `npx expo install` fails with "HTTP Proxy Network Error: Forbidden" (api.expo.dev unreachable) | Run with `EXPO_OFFLINE=1 EXPO_NO_DEPENDENCY_VALIDATION=1`; versions then come from the SDK's bundled list |
+| D16 | TypeScript 6 | Tests fail typecheck with "Cannot find name 'describe'" | TS 6 no longer auto-includes `@types/*`; list them in `compilerOptions.types` |
+| D17 | Peer versions | `npm install` ERESOLVE on `react-dom` | Pin `react-dom` to the exact `react` version (`npx expo install react-dom`) |
+| D18 | Web export | "Unable to resolve @expo/metro-runtime" | Install it at top level: `npx expo install @expo/metro-runtime` |
 
 Standard debugging loop for any bug: reproduce on a dev build → write a failing test at the
 highest seam that shows it (pgTAP, Jest or Maestro) → fix → test green → note the class here if new.
@@ -269,9 +273,19 @@ highest seam that shows it (pgTAP, Jest or Maestro) → fix → test green → n
 | --- | --- | --- |
 | Client stack | Expo (React Native, TypeScript) | One codebase for Android/iOS/web; EAS cloud builds; OTA updates |
 | Backend | Supabase with PostGIS | Geofences and nearby search in SQL; Realtime for live clips; Auth and Storage included |
-| Map | Mapbox via `@rnmapbox/maps` | Custom night style, clustering, heatmap (pending gate Q5) |
+| Map | Mapbox via `@rnmapbox/maps` | Custom night style, clustering, heatmap (gate Q5: yes) |
 | Order | Risk-first: map → clips → accounts | The native modules and geofence rule are the riskiest parts |
-| Host tools | Inside the mobile app for the MVP | Avoids a second app before product proof (pending gate Q6) |
+| Host tools | Inside the mobile app for the MVP | Avoids a second app before product proof (gate Q6: yes) |
+| Package manager | npm, with `npx expo install` for native modules | Expo's default; avoids pnpm hoisting issues with React Native |
+| Routes folder | `src/app/` | Expo SDK 58 convention; non-route code stays in `src/` |
+| Clip hosting | Supabase Storage for the MVP | Gate Q7: yes |
+| Sign-in | Google + Apple + email one-time code | Gate Q8: yes |
+| Platforms | Android first; iOS kept buildable but untested until an Apple Developer account exists | Gate Q3: yes; Apple account not confirmed |
+| Launch city | **Not answered.** Dev seed data uses a sample area (London, Shoreditch) behind one config value, swapped when the owner names the city | "Yes to all" didn't name a city |
+| Git workflow | One branch + PR per phase into `main`, merged when CI is green | Gate Q10: yes |
+| DB tests | `scripts/db-test.sh` runs migrations, seed and pgTAP on a throwaway local Postgres (with a small Supabase shim for roles and `auth.uid()`); same script in CI. `supabase test db` also works where Docker is available | No Docker in the build sandbox; one script for local and CI keeps results comparable |
+| RPC naming | `venues_near(origin_lat, origin_lng, radius_m, max_results)` | Output columns are `lat`/`lng`; Postgres forbids input and output parameters with the same name |
+| Web map | `TonightMap.web.tsx` shows a venue list instead of a map | The web export exists for the Squad vote page; Mapbox native SDK is mobile-only |
 
 ## Not yet specified
 
@@ -285,7 +299,7 @@ highest seam that shows it (pgTAP, Jest or Maestro) → fix → test green → n
 - Always: 18+ only; friends-only individual location; server time for freshness; RLS on every table with pgTAP tests; every step lands green.
 - Never (in the MVP): own ticketing/payments, tables, subscriptions, multiple cities, AR, showing strangers' locations, importing clips from the gallery, selling location data.
 
-## Gate questions (answer before building starts)
+## Gate questions (answered 2026-11-15: yes to all recommendations)
 
 Recommended answer first; "yes" accepts it.
 
@@ -313,8 +327,8 @@ Recommended answer first; "yes" accepts it.
 
 | Phase | Status |
 | --- | --- |
-| 0 Foundations | Not started |
-| 1 Tonight map | Not started |
+| 0 Foundations | Code done 2026-11-16 (scaffold, Supabase wiring, CI, EAS profiles). **Waiting on owner:** first EAS dev build on a phone (needs Expo + Mapbox accounts) |
+| 1 Tonight map | Code done 2026-11-16: venues schema + `venues_near` RPC (12 pgTAP tests), map with clusters + photo pins + venue card (Jest screen tests), Android + web bundles export. **Waiting on owner:** device check on the dev build |
 | 2 Live Proof clips | Not started |
 | 3 Accounts, friends, safety | Not started |
 | 4 Venue profiles, search, directions | Not started |

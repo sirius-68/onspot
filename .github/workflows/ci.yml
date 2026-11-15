@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: Typecheck, lint, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --ci
+
+  db:
+    name: Database tests (PostGIS + pgTAP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostGIS and pgTAP for the runner's PostgreSQL
+        run: |
+          PGV=$(ls /usr/lib/postgresql | sort -V | tail -1)
+          sudo apt-get update -q
+          sudo apt-get install -y -q "postgresql-${PGV}-postgis-3" "postgresql-${PGV}-pgtap"
+      - name: Run migrations, seed and pgTAP tests
+        run: bash scripts/db-test.sh

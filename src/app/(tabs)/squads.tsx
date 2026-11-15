@@ -1,10 +1,3 @@
-import { Placeholder } from '@/components/Placeholder';
+import { SquadsScreen } from '@/features/squads/SquadsScreen';
 
-export default function SquadsScreen() {
-  return (
-    <Placeholder
-      title="Squads"
-      body="Pick up to three venues and let your friends vote. Coming in Phase 5."
-    />
-  );
-}
+export default SquadsScreen;

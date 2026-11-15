@@ -36,6 +36,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // The Mapbox download token is read from RNMAPBOX_MAPS_DOWNLOAD_TOKEN at build time.
     ['@rnmapbox/maps', { RNMapboxMapsImpl: 'mapbox' }],
     [
+      'expo-camera',
+      {
+        cameraPermission: 'Onspot uses the camera to record live clips of the venue you are at.',
+        microphonePermission: 'Onspot records sound with your clips so people can hear the vibe.',
+        recordAudioAndroid: true,
+      },
+    ],
+    'expo-video',
+    'expo-web-browser',
+    [
       'expo-location',
       {
         locationWhenInUsePermission:

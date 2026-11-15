@@ -21,7 +21,13 @@ export function VenuePin({ venue, selected = false, onPress }: Props) {
       style={styles.wrap}
       hitSlop={8}
     >
-      <View style={[styles.ring, selected && styles.ringSelected]}>
+      <View
+        style={[
+          styles.ring,
+          (venue.live_clip_count ?? 0) > 0 && styles.ringLive,
+          selected && styles.ringSelected,
+        ]}
+      >
         {venue.cover_photo_url ? (
           <Image source={{ uri: venue.cover_photo_url }} style={styles.photo} contentFit="cover" />
         ) : (
@@ -48,6 +54,7 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceRaised,
     backgroundColor: colors.surface,
   },
+  ringLive: { borderColor: colors.live },
   ringSelected: { borderColor: colors.accent },
   photo: { width: SIZE, height: SIZE, borderRadius: SIZE / 2 },
   fallback: {

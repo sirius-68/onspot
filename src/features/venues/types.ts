@@ -13,6 +13,9 @@ export type NearbyVenue = {
   cover_photo_url: string | null;
   price_band: number | null;
   music_tags: string[];
+  vibe_score?: number;
+  live_clip_count?: number;
+  capacity_level?: 'quiet' | 'busy' | 'packed' | null;
 };
 
 export type LatLng = { lat: number; lng: number };

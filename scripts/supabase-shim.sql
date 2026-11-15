@@ -39,3 +39,36 @@ create or replace function auth.role() returns text
 language sql stable as $$
   select nullif(current_setting('request.jwt.claim.role', true), '')
 $$;
+
+-- Storage (only what our policies use).
+create schema if not exists storage;
+grant usage on schema storage to anon, authenticated, service_role;
+create table if not exists storage.buckets (
+  id text primary key,
+  name text not null,
+  public boolean default false,
+  file_size_limit bigint,
+  allowed_mime_types text[]
+);
+create table if not exists storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text references storage.buckets (id),
+  name text not null,
+  owner uuid,
+  created_at timestamptz default now()
+);
+alter table storage.objects enable row level security;
+grant select, insert, update, delete on storage.objects to anon, authenticated;
+create or replace function storage.foldername(name text) returns text[]
+language sql immutable as $$
+  select (string_to_array(name, '/'))[1:greatest(array_length(string_to_array(name, '/'), 1) - 1, 0)]
+$$;
+
+-- Realtime publication (Supabase creates it; migrations add tables to it).
+do $$
+begin
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    create publication supabase_realtime;
+  end if;
+end
+$$;

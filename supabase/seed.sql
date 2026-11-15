@@ -27,3 +27,20 @@ from (values
   ('Gold Tooth Lounge',  'lounge',     51.5254, -0.0738, 30, 'Sample St 11', 4, array['hiphop', 'rnb']),
   ('Late Kitchen Disco', 'club',       51.5212, -0.0779, 40, 'Sample St 12', 2, array['disco'])
 ) as v(name, category, lat, lng, radius_m, address, price_band, music_tags);
+
+-- Sample events "tonight" (relative to when the seed runs) and door status, so the venue
+-- pages and the Tonight filter have something to show in development.
+insert into public.events (venue_id, title, starts_at, ends_at, price_text, ticket_url, spots_left)
+select v.id, e.title, now() + e.starts_in, now() + e.starts_in + interval '5 hours', e.price, e.url, e.spots
+from public.venues v
+join (values
+  ('Afro Heat Club',    'Afro Fridays',           interval '1 hour',  '£10 before 11', 'https://example.com/tickets/afro', 40),
+  ('Neon Basement',     'Deep House Night',       interval '2 hours', '£15',           'https://example.com/tickets/neon', 12),
+  ('Low Light Jazz',    'Late Jazz Session',      interval '30 minutes', 'Free entry', null, null),
+  ('Warehouse Sundays', 'Garage Classics',        interval '3 hours', '£12',           'https://example.com/tickets/wh',   0)
+) as e(venue_name, title, starts_in, price, url, spots) on e.venue_name = v.name;
+
+insert into public.venue_status (venue_id, capacity_level, queue_minutes)
+select id, 'busy', 10 from public.venues where name in ('Afro Heat Club', 'Neon Basement');
+
+select public.compute_vibe_scores();

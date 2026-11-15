@@ -263,6 +263,11 @@ Known failure classes for this stack, how each shows up, and the first thing to 
 | D16 | TypeScript 6 | Tests fail typecheck with "Cannot find name 'describe'" | TS 6 no longer auto-includes `@types/*`; list them in `compilerOptions.types` |
 | D17 | Peer versions | `npm install` ERESOLVE on `react-dom` | Pin `react-dom` to the exact `react` version (`npx expo install react-dom`) |
 | D18 | Web export | "Unable to resolve @expo/metro-runtime" | Install it at top level: `npx expo install @expo/metro-runtime` |
+| D19 | PL/pgSQL | "syntax error at end of input" on an `IF … CASE WHEN … THEN … END THEN` | PL/pgSQL ends the IF condition at the first `THEN`; wrap the CASE in parentheses |
+| D20 | pgTAP | A row inserted by a function isn't visible in the same SELECT | Same-statement snapshot; capture the function result in a temp table, then query |
+| D21 | Supabase auth | Email arrives with a link but no 6-digit code | Add `{{ .Token }}` to the Magic link and Change email templates |
+| D22 | Storage | Clip upload fails with "new row violates row-level security" (path isn't `<user id>/…` or the session expired) | `create_clip` reserves the path; check `ensureSession()` ran and the storage insert policy exists (`db push`) |
+| D23 | Scheduled jobs | Vibe Score stuck at 0 (pg_cron job not running) | `select * from cron.job;` — if missing, enable pg_cron in the dashboard and re-run the migration's schedule block |
 
 Standard debugging loop for any bug: reproduce on a dev build → write a failing test at the
 highest seam that shows it (pgTAP, Jest or Maestro) → fix → test green → note the class here if new.
@@ -286,6 +291,13 @@ highest seam that shows it (pgTAP, Jest or Maestro) → fix → test green → n
 | DB tests | `scripts/db-test.sh` runs migrations, seed and pgTAP on a throwaway local Postgres (with a small Supabase shim for roles and `auth.uid()`); same script in CI. `supabase test db` also works where Docker is available | No Docker in the build sandbox; one script for local and CI keeps results comparable |
 | RPC naming | `venues_near(origin_lat, origin_lng, radius_m, max_results)` | Output columns are `lat`/`lng`; Postgres forbids input and output parameters with the same name |
 | Web map | `TonightMap.web.tsx` shows a venue list instead of a map | The web export exists for the Squad vote page; Mapbox native SDK is mobile-only |
+| Camera | `expo-camera` (video mode) instead of `react-native-vision-camera` | Expo module with a config plugin; enough for ≤15 s clips; fewer native build issues |
+| Clip verification | SQL functions `create_clip` / `finalize_clip` (security definer) instead of an Edge Function | Geofence + time + upload checks in one place, tested with pgTAP; no extra deploy step |
+| Clip upload | Standard Storage upload with 3 retries and backoff; TUS resumable later if needed | ≤15 s clips are small; keeps the client simple |
+| Analytics | PostHog HTTP capture API, no SDK; no-op without a key | Works before the account exists; no native dependency |
+| Crash reporting | Root error boundary now; Sentry added when the DSN exists | Avoids a native plugin that needs build tokens before launch |
+| Owner request 2026-11-16 | "Build the complete app; APIs later": Phases 2–8 built in one branch/PR (`build/phases-2-8`) | Faster than one PR per phase; device checks happen once keys exist |
+| Account deletion | In-app (`delete_my_account`) | Google Play requires a deletion path for apps with accounts |
 
 ## Not yet specified
 
@@ -329,10 +341,10 @@ Recommended answer first; "yes" accepts it.
 | --- | --- |
 | 0 Foundations | Code done 2026-11-16 (scaffold, Supabase wiring, CI, EAS profiles). **Waiting on owner:** first EAS dev build on a phone (needs Expo + Mapbox accounts) |
 | 1 Tonight map | Code done 2026-11-16: venues schema + `venues_near` RPC (12 pgTAP tests), map with clusters + photo pins + venue card (Jest screen tests), Android + web bundles export. **Waiting on owner:** device check on the dev build |
-| 2 Live Proof clips | Not started |
-| 3 Accounts, friends, safety | Not started |
-| 4 Venue profiles, search, directions | Not started |
-| 5 Squad vote | Not started |
-| 6 Host Live and Spotter mode | Not started |
-| 7 Vibe Score and metrics | Not started |
-| 8 Hardening and beta | Not started |
+| 2 Live Proof clips | Code done 2026-11-16: clips schema, `create_clip`/`finalize_clip` (geofence, freshness, upload check, rate limit), storage bucket + policies, Realtime, capture screen, upload with retries, clip carousel. 13 pgTAP + 7 Jest tests |
+| 3 Accounts, friends, safety | Code done 2026-11-16: email code / Google / Apple, 18+ profiles, friends, friends-only location, Ghost Mode, block, report (auto-hide at 3), account deletion. 21 pgTAP tests |
+| 4 Venue profiles, search, directions | Code done 2026-11-16: `get_venue`, events, door status, `search_venues` + filter chips, directions hand-off, ticket links |
+| 5 Squad vote | Code done 2026-11-16: squads schema + RPCs, create flow, vote page for app + web guests. pgTAP + screen tests |
+| 6 Host Live and Spotter mode | Code done 2026-11-16: venue hosts, door status, events, official clips, Spotter tasks + stats, admin role tools |
+| 7 Vibe Score and metrics | Code done 2026-11-16: `vibe_score`, `compute_vibe_scores` on pg_cron every 2 min, `admin_metrics`, PostHog events |
+| 8 Hardening and beta | Partly done: error boundary, legal pages (draft), store checklist (`docs/STORE.md`). **Waiting on owner:** keys, device testing (Maestro flows), Sentry DSN, internal track release |

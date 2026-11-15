@@ -26,7 +26,20 @@ const mockLocation = jest.fn();
 jest.mock('@/features/map/useUserLocation', () => ({ useUserLocation: () => mockLocation() }));
 
 const mockVenues = jest.fn();
-jest.mock('@/features/map/useNearbyVenues', () => ({ useNearbyVenues: () => mockVenues() }));
+jest.mock('@/features/map/useVenueSearch', () => ({ useVenueSearch: () => mockVenues() }));
+jest.mock('@/features/friends/hooks', () => ({
+  useFriendLocations: () => ({ data: [] }),
+  useShareLocationWhileOpen: () => undefined,
+}));
+const mockRequireProfile = jest.fn(() => false);
+jest.mock('@/features/auth/useRequireProfile', () => ({
+  useRequireProfile: () => mockRequireProfile,
+}));
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({
+  router: { push: (...args: unknown[]) => mockPush(...args) },
+  useIsFocused: () => true,
+}));
 
 jest.mock('@/lib/env', () => ({ missingEnv: [], env: { defaultCenter: { lat: 0, lng: 0 } } }));
 
@@ -51,6 +64,11 @@ const readyLocation = {
 };
 
 describe('TonightScreen', () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+    mockRequireProfile.mockClear();
+  });
+
   it('shows a loading status while location and venues load', async () => {
     mockLocation.mockReturnValue({ ...readyLocation, ready: false });
     mockVenues.mockReturnValue({ data: undefined, isPending: true, isFetching: false });
@@ -71,6 +89,7 @@ describe('TonightScreen', () => {
     });
     await renderScreen();
     expect(screen.getByText('2 venues near you tonight')).toBeTruthy();
+    expect(screen.getByTestId('capture-fab')).toBeTruthy();
     expect(screen.queryByTestId('venue-card')).toBeNull();
 
     await fireEvent.press(screen.getByLabelText('pin-Corner Pint'));
@@ -93,6 +112,27 @@ describe('TonightScreen', () => {
     await renderScreen();
     await fireEvent.press(screen.getByTestId('map-status'));
     expect(refetch).toHaveBeenCalled();
+  });
+
+  it('sends people without a profile to sign in before recording', async () => {
+    mockLocation.mockReturnValue(readyLocation);
+    mockVenues.mockReturnValue({ data: [], isPending: false, isError: false, isFetching: false });
+    await renderScreen();
+    await fireEvent.press(screen.getByTestId('capture-fab'));
+    expect(mockRequireProfile).toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalledWith('/capture');
+  });
+
+  it('shows live counts', async () => {
+    mockLocation.mockReturnValue(readyLocation);
+    mockVenues.mockReturnValue({
+      data: [makeVenue({ id: 'a', live_clip_count: 2 }), makeVenue({ id: 'b' })],
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    await renderScreen();
+    expect(screen.getByText('2 venues · 1 live now')).toBeTruthy();
   });
 
   it('explains when location is off', async () => {

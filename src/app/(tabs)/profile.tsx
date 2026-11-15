@@ -1,5 +1,3 @@
-import { Placeholder } from '@/components/Placeholder';
+import { ProfileScreen } from '@/features/profile/ProfileScreen';
 
-export default function ProfileScreen() {
-  return <Placeholder title="Profile" body="Sign-in, friends and Ghost Mode arrive in Phase 3." />;
-}
+export default ProfileScreen;

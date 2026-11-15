@@ -11,7 +11,9 @@ import Mapbox, {
 import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 
+import { FriendBubble } from '@/components/FriendBubble';
 import { VenuePin } from '@/components/VenuePin';
+import type { FriendLocation } from '@/features/friends/api';
 import { env } from '@/lib/env';
 import type { LatLng, NearbyVenue } from '@/features/venues/types';
 import { colors } from '@/theme/tokens';
@@ -24,6 +26,7 @@ export type TonightMapProps = {
   center: LatLng;
   showUserLocation: boolean;
   venues: NearbyVenue[];
+  friends?: FriendLocation[];
   selectedId: string | null;
   onSelect: (venue: NearbyVenue | null) => void;
 };
@@ -36,6 +39,7 @@ export function TonightMap({
   center,
   showUserLocation,
   venues,
+  friends = [],
   selectedId,
   onSelect,
 }: TonightMapProps) {
@@ -135,6 +139,17 @@ export function TonightMap({
           isSelected={venue.id === selectedId}
         >
           <VenuePin venue={venue} selected={venue.id === selectedId} onPress={onSelect} />
+        </MarkerView>
+      ))}
+
+      {friends.map((friend) => (
+        <MarkerView
+          key={`friend-${friend.user_id}`}
+          coordinate={[friend.lng, friend.lat]}
+          anchor={{ x: 0.5, y: 0.5 }}
+          allowOverlap
+        >
+          <FriendBubble friend={friend} />
         </MarkerView>
       ))}
     </MapView>

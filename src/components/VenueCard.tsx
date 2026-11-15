@@ -15,10 +15,11 @@ import { colors, radii, spacing, typography } from '@/theme/tokens';
 type Props = {
   venue: NearbyVenue;
   onClose: () => void;
+  onOpen: () => void;
 };
 
 /** Card docked above the tab bar when a pin is selected. */
-export function VenueCard({ venue, onClose }: Props) {
+export function VenueCard({ venue, onClose, onOpen }: Props) {
   const meta = [
     categoryLabel(venue.category),
     formatDistance(venue.distance_m),
@@ -51,7 +52,20 @@ export function VenueCard({ venue, onClose }: Props) {
             ))}
           </View>
         )}
-        <Text style={styles.liveHint}>No live clips yet tonight</Text>
+        <Text style={[styles.liveHint, (venue.live_clip_count ?? 0) > 0 && styles.liveOn]}>
+          {(venue.live_clip_count ?? 0) > 0
+            ? `● ${venue.live_clip_count} live ${venue.live_clip_count === 1 ? 'clip' : 'clips'} · Vibe ${venue.vibe_score ?? 0}`
+            : 'No live clips in the last hour'}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${venue.name}`}
+          onPress={onOpen}
+          style={styles.open}
+          testID="venue-card-open"
+        >
+          <Text style={styles.openText}>See the vibe</Text>
+        </Pressable>
       </View>
       <Pressable
         accessibilityRole="button"
@@ -96,6 +110,16 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     overflow: 'hidden',
   },
-  liveHint: { ...typography.caption, color: colors.textMuted, fontStyle: 'italic' },
+  liveHint: { ...typography.caption, color: colors.textMuted },
+  liveOn: { color: colors.live },
+  open: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.accent,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    marginTop: 2,
+  },
+  openText: { ...typography.caption, color: '#fff', fontWeight: '700' },
   close: { position: 'absolute', top: spacing.sm, right: spacing.sm },
 });

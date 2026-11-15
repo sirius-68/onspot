@@ -32,7 +32,8 @@ Every push to `main` builds an APK on GitHub Actions (`.github/workflows/android
 and publishes it under **Releases** as a pre-release. Download it on your phone, open it and
 allow installs from that source. Without Supabase keys the app runs in **demo mode**: no sign-in,
 you're a guest with every role, and the whole app works on sample venues around your location
-(map, venue pages, posting clips, squads, friends, Host Live, Spotter mode, Admin). A local
+(feed with stories, map with photo cards, venue pages, posting clips, chats with ticket splits,
+tonight's events, squads, friends, Host Live, Spotter mode, Admin). A local
 stand-in backend (`src/lib/demoBackend.ts`) answers the same calls as Supabase and saves
 everything on the phone; Profile → *Reset demo data* starts over.
 To build a live version, add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`

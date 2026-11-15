@@ -16,6 +16,9 @@ export type NearbyVenue = {
   vibe_score?: number;
   live_clip_count?: number;
   capacity_level?: 'quiet' | 'busy' | 'packed' | null;
+  /** Avatar of the friend who posted there most recently (shown on the map card). */
+  badge_avatar_url?: string | null;
+  badge_name?: string | null;
 };
 
 export type LatLng = { lat: number; lng: number };

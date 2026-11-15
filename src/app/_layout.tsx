@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DarkTheme, type ErrorBoundaryProps, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, type ErrorBoundaryProps, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
@@ -15,9 +15,9 @@ import { colors, spacing, typography } from '@/theme/tokens';
 WebBrowser.maybeCompleteAuthSession();
 
 const navigationTheme = {
-  ...DarkTheme,
+  ...DefaultTheme,
   colors: {
-    ...DarkTheme.colors,
+    ...DefaultTheme.colors,
     primary: colors.accent,
     background: colors.background,
     card: colors.surface,
@@ -65,7 +65,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <ThemeProvider value={navigationTheme}>
-              <StatusBar style="light" />
+              <StatusBar style="dark" />
               <Stack
                 screenOptions={{
                   headerShown: false,
@@ -76,6 +76,10 @@ export default function RootLayout() {
                 <Stack.Screen name="capture" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="squad/new" options={{ presentation: 'modal' }} />
+                <Stack.Screen
+                  name="story/[userId]"
+                  options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+                />
               </Stack>
             </ThemeProvider>
           </AuthProvider>

@@ -31,10 +31,7 @@ jest.mock('@/features/friends/hooks', () => ({
   useFriendLocations: () => ({ data: [] }),
   useShareLocationWhileOpen: () => undefined,
 }));
-const mockRequireProfile = jest.fn(() => false);
-jest.mock('@/features/auth/useRequireProfile', () => ({
-  useRequireProfile: () => mockRequireProfile,
-}));
+jest.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => ({ profile: null }) }));
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   router: { push: (...args: unknown[]) => mockPush(...args) },
@@ -66,7 +63,6 @@ const readyLocation = {
 describe('TonightScreen', () => {
   beforeEach(() => {
     mockPush.mockClear();
-    mockRequireProfile.mockClear();
   });
 
   it('shows a loading status while location and venues load', async () => {
@@ -89,13 +85,17 @@ describe('TonightScreen', () => {
     });
     await renderScreen();
     expect(screen.getByText('2 venues near you tonight')).toBeTruthy();
-    expect(screen.getByTestId('capture-fab')).toBeTruthy();
+    expect(screen.getByTestId('map-search')).toBeTruthy();
     expect(screen.queryByTestId('venue-card')).toBeNull();
 
     await fireEvent.press(screen.getByLabelText('pin-Corner Pint'));
-    expect(screen.getByTestId('venue-card')).toBeTruthy();
+    expect(screen.getAllByTestId('venue-card').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('map-search')).toBeNull();
 
-    await fireEvent.press(screen.getByLabelText('Close venue card'));
+    await fireEvent.press(screen.getAllByTestId('venue-card-open')[0]!);
+    expect(mockPush).toHaveBeenCalledWith('/venue/b');
+
+    await fireEvent.press(screen.getAllByLabelText('Close')[0]!);
     expect(screen.queryByTestId('venue-card')).toBeNull();
   });
 
@@ -114,13 +114,14 @@ describe('TonightScreen', () => {
     expect(refetch).toHaveBeenCalled();
   });
 
-  it('sends people without a profile to sign in before recording', async () => {
+  it('opens your profile and notifications from the header', async () => {
     mockLocation.mockReturnValue(readyLocation);
     mockVenues.mockReturnValue({ data: [], isPending: false, isError: false, isFetching: false });
     await renderScreen();
-    await fireEvent.press(screen.getByTestId('capture-fab'));
-    expect(mockRequireProfile).toHaveBeenCalled();
-    expect(mockPush).not.toHaveBeenCalledWith('/capture');
+    await fireEvent.press(screen.getByTestId('header-profile'));
+    expect(mockPush).toHaveBeenCalledWith('/profile');
+    await fireEvent.press(screen.getByTestId('header-bell'));
+    expect(mockPush).toHaveBeenCalledWith('/notifications');
   });
 
   it('shows live counts', async () => {

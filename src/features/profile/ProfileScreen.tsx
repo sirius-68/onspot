@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import Ionicons from '@expo/vector-icons/Ionicons';
+
+import { Avatar } from '@/components/Avatar';
 import { Button, Field, SectionTitle } from '@/components/ui';
 import { profileKey, useAuth } from '@/features/auth/AuthProvider';
 import {
@@ -15,7 +18,6 @@ import {
   setGhostMode,
 } from '@/features/friends/api';
 import { friendsKey, useFriends } from '@/features/friends/hooks';
-import { venueInitials } from '@/features/venues/format';
 import { track } from '@/lib/analytics';
 import { env } from '@/lib/env';
 import { errorText, unwrap } from '@/lib/errors';
@@ -41,6 +43,7 @@ export function ProfileScreen() {
   if (!hasAccount || !profile) {
     return (
       <SafeAreaView style={styles.screen}>
+        <BackBar />
         <View style={styles.content}>
           <Text style={styles.title}>Your Onspot</Text>
           <Text style={styles.body}>
@@ -73,13 +76,14 @@ export function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
+      <BackBar />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {venueInitials(profile.display_name ?? profile.username)}
-            </Text>
-          </View>
+          <Avatar
+            name={profile.display_name ?? profile.username}
+            url={profile.avatar_url}
+            size={64}
+          />
           <View>
             <Text style={styles.title}>{profile.display_name ?? profile.username}</Text>
             <Text style={styles.body}>@{profile.username}</Text>
@@ -255,6 +259,20 @@ export function ProfileScreen() {
   );
 }
 
+function BackBar() {
+  return (
+    <View style={styles.backBar}>
+      <Pressable
+        accessibilityLabel="Back"
+        onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+        hitSlop={12}
+      >
+        <Ionicons name="chevron-back" size={26} color={colors.text} />
+      </Pressable>
+    </View>
+  );
+}
+
 function LegalLinks() {
   return (
     <View style={styles.legal}>
@@ -275,18 +293,10 @@ function LegalLinks() {
 
 const styles = StyleSheet.create({
   demoNote: { ...typography.caption, color: colors.warning },
+  backBar: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { ...typography.heading, color: colors.accent },
   title: { ...typography.title, color: colors.text },
   body: { ...typography.caption, color: colors.textMuted },
   ok: { ...typography.caption, color: colors.live },

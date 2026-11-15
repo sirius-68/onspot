@@ -69,7 +69,7 @@ describe('demo backend', () => {
       radius_m: 3000,
       p_query: 'velvet',
     });
-    expect((venues.data as { live_clip_count: number }[])[0]?.live_clip_count).toBe(2);
+    expect((venues.data as { live_clip_count: number }[])[0]?.live_clip_count).toBe(1);
     expect(
       client.storage.from('clips').getPublicUrl(`demo-2/${clipId}.mp4`).data.publicUrl,
     ).toMatch(/^file:/);

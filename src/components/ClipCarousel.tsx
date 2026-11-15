@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
@@ -8,7 +9,7 @@ import type { LiveClip } from '@/features/clips/types';
 import { supabase } from '@/lib/supabase';
 import { colors, radii, spacing, typography } from '@/theme/tokens';
 
-import { ClipPlayer } from './ClipPlayer';
+import { ClipMedia } from './ClipPlayer';
 
 type ViewToken = { index?: number | null; isViewable: boolean };
 
@@ -16,6 +17,8 @@ type Props = {
   clips: LiveClip[];
   height: number;
   onReport?: (clip: LiveClip) => void;
+  /** Shown behind the empty state, e.g. the venue's cover photo. */
+  fallbackImage?: string | null;
 };
 
 const SOURCE_LABEL: Record<LiveClip['source'], string | null> = {
@@ -25,7 +28,7 @@ const SOURCE_LABEL: Record<LiveClip['source'], string | null> = {
 };
 
 /** Swipe left/right through a venue's live clips. Only the visible clip plays. */
-export function ClipCarousel({ clips, height, onReport }: Props) {
+export function ClipCarousel({ clips, height, onReport, fallbackImage }: Props) {
   const { width } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(0);
   const [muted, setMuted] = useState(true);
@@ -41,9 +44,25 @@ export function ClipCarousel({ clips, height, onReport }: Props) {
   if (clips.length === 0) {
     return (
       <View style={[styles.empty, { height }]} testID="clip-carousel-empty">
-        <Ionicons name="videocam-outline" size={28} color={colors.textMuted} />
-        <Text style={styles.emptyText}>No live clips in the last hour.</Text>
-        <Text style={styles.emptySub}>Be the first to show the vibe.</Text>
+        {fallbackImage ? (
+          <>
+            <Image
+              source={{ uri: fallbackImage }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+            />
+            <View style={styles.emptyPill}>
+              <Ionicons name="videocam-outline" size={14} color={colors.white} />
+              <Text style={styles.emptyPillText}>No live clips in the last hour</Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <Ionicons name="videocam-outline" size={28} color={colors.textMuted} />
+            <Text style={styles.emptyText}>No live clips in the last hour.</Text>
+            <Text style={styles.emptySub}>Be the first to show the vibe.</Text>
+          </>
+        )}
       </View>
     );
   }
@@ -64,7 +83,7 @@ export function ClipCarousel({ clips, height, onReport }: Props) {
         renderItem={({ item, index }) => (
           <View style={{ width, height }}>
             {Math.abs(index - activeIndex) <= 1 && (
-              <ClipPlayer
+              <ClipMedia
                 url={clipPublicUrl(supabase, item.storage_path)}
                 active={index === activeIndex}
                 muted={muted}
@@ -87,7 +106,7 @@ export function ClipCarousel({ clips, height, onReport }: Props) {
                   <Ionicons
                     name={muted ? 'volume-mute' : 'volume-high'}
                     size={18}
-                    color={colors.text}
+                    color={colors.white}
                   />
                 </Pressable>
                 {onReport && (
@@ -97,7 +116,7 @@ export function ClipCarousel({ clips, height, onReport }: Props) {
                     onPress={() => onReport(item)}
                     style={styles.iconBtn}
                   >
-                    <Ionicons name="flag-outline" size={18} color={colors.text} />
+                    <Ionicons name="flag-outline" size={18} color={colors.white} />
                   </Pressable>
                 )}
               </View>
@@ -125,15 +144,30 @@ const styles = StyleSheet.create({
   },
   emptyText: { ...typography.body, color: colors.text },
   emptySub: { ...typography.caption, color: colors.textMuted },
+  emptyPill: {
+    position: 'absolute',
+    bottom: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  emptyPillText: { ...typography.caption, color: colors.white },
   overlay: {
     ...StyleSheet.absoluteFill,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     padding: spacing.md,
+    paddingBottom: spacing.xl,
   },
-  badges: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xxl },
+  badges: { flexDirection: 'row', gap: spacing.sm, flexShrink: 1, flexWrap: 'wrap' },
   fresh: {
     ...typography.caption,
-    color: colors.text,
+    color: colors.white,
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderRadius: radii.pill,
     paddingHorizontal: spacing.sm,
@@ -142,14 +176,14 @@ const styles = StyleSheet.create({
   },
   official: {
     ...typography.caption,
-    color: colors.background,
+    color: colors.white,
     backgroundColor: colors.live,
     borderRadius: radii.pill,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     overflow: 'hidden',
   },
-  actions: { flexDirection: 'row', alignSelf: 'flex-end', gap: spacing.sm },
+  actions: { flexDirection: 'row', gap: spacing.sm },
   iconBtn: {
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderRadius: radii.pill,
@@ -163,5 +197,5 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
-  dotActive: { backgroundColor: colors.text },
+  dotActive: { backgroundColor: colors.white },
 });

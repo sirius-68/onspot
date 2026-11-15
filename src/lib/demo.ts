@@ -6,6 +6,8 @@ import type { VenueFilters } from '@/features/map/filters';
 import type { LatLng, NearbyVenue, VenueCategory } from '@/features/venues/types';
 import type { CapacityLevel, VenueDetail } from '@/features/venues/useVenue';
 
+import { DEMO_PHOTOS } from './demoMedia';
+
 type DemoEvent = VenueDetail['events'][number];
 
 /** Changes made while using the demo (host updates, posted clips), layered over the seeds. */
@@ -172,6 +174,27 @@ const SEEDS: DemoSeed[] = [
   },
 ];
 
+const { club, bar, live, dj } = DEMO_PHOTOS;
+/** Photos per sample venue, same order as SEEDS. The first is the cover. */
+const PHOTOS: string[][] = [
+  [club[0], club[5], dj[0]],
+  [bar[3], bar[4], bar[0]],
+  [club[1], club[2], club[6]],
+  [bar[6], bar[5]],
+  [bar[7], bar[1], bar[2]],
+  [live[0], live[4]],
+  [live[1], live[2]],
+  [live[3], dj[1]],
+  [club[3], club[4], dj[2]],
+  [bar[5], live[4]],
+  [bar[4], bar[3]],
+  [club[7], club[6]],
+] as string[][];
+
+export function demoVenuePhotos(id: string): string[] {
+  return PHOTOS[Number(id.replace('demo-', '')) - 1] ?? [];
+}
+
 /** Metres between two points (haversine). */
 export function distanceM(a: LatLng, b: LatLng): number {
   const R = 6_371_000;
@@ -228,11 +251,12 @@ export function demoVenues(center: LatLng, overlay: DemoOverlay = {}): NearbyVen
       lng,
       distance_m: distanceM(center, { lat, lng }),
       address: 'Sample venue (demo mode)',
-      cover_photo_url: null,
+      cover_photo_url: PHOTOS[i]?.[0] ?? null,
       price_band: s.price,
       music_tags: s.tags,
-      vibe_score: Math.min(100, s.vibe + posted * 10),
-      live_clip_count: s.live + posted,
+      vibe_score: Math.min(100, s.vibe + posted * 5),
+      // With the demo backend's overlay, counts come from actual (sample + your) clips.
+      live_clip_count: overlay.liveClips ? posted : s.live,
       capacity_level: overlay.status?.[id]?.capacity_level ?? s.capacity,
     };
   }).sort((x, y) => x.distance_m - y.distance_m);
@@ -282,12 +306,12 @@ export function demoVenueDetail(
     name: seed.name,
     category: seed.category,
     address: 'Sample venue (demo mode)',
-    cover_photo_url: null,
+    cover_photo_url: PHOTOS[index]?.[0] ?? null,
     price_band: seed.price,
     music_tags: seed.tags,
     lat: a.lat + seed.dLat,
     lng: a.lng + seed.dLng,
-    vibe_score: Math.min(100, seed.vibe + (overlay.liveClips?.[id] ?? 0) * 10),
+    vibe_score: Math.min(100, seed.vibe + (overlay.liveClips?.[id] ?? 0) * 5),
     is_host: overlay.hosted?.includes(id) ?? false,
     status: overlay.status?.[id]
       ? overlay.status[id]
@@ -308,7 +332,8 @@ export function demoVenueDetail(
               starts_at: start.toISOString(),
               ends_at: new Date(start.getTime() + 5 * 3600_000).toISOString(),
               price_text: seed.event.price,
-              ticket_url: null,
+              // Demo events have no real ticket page; the app explains that when tapped.
+              ticket_url: seed.event.spots === null ? null : 'demo:tickets',
               spots_left: seed.event.spots,
             },
           ]

@@ -55,7 +55,7 @@ export function CaptureScreen() {
   if (!camPerm || !micPerm) return <View style={styles.black} />;
   if (!camPerm.granted || !micPerm.granted) {
     return (
-      <SafeAreaView style={[styles.black, styles.center]}>
+      <SafeAreaView style={[styles.sheet, styles.center]}>
         <Text style={styles.title}>Show the vibe</Text>
         <Text style={styles.body}>
           Onspot needs the camera and microphone to record live clips. Clips are only shot in the
@@ -193,7 +193,7 @@ export function CaptureScreen() {
           style={styles.close}
           hitSlop={12}
         >
-          <Ionicons name="close" size={26} color={colors.text} />
+          <Ionicons name="close" size={26} color={colors.white} />
         </Pressable>
         <View style={styles.bottom}>
           {!!error && <Text style={styles.error}>{error}</Text>}
@@ -245,13 +245,13 @@ const styles = StyleSheet.create({
   cameraUi: { flex: 1, justifyContent: 'space-between' },
   close: { padding: spacing.lg },
   bottom: { alignItems: 'center', paddingBottom: spacing.xxl, gap: spacing.md },
-  hint: { ...typography.caption, color: colors.text },
+  hint: { ...typography.caption, color: colors.white },
   shutter: {
     width: 76,
     height: 76,
     borderRadius: 38,
     borderWidth: 6,
-    borderColor: colors.text,
+    borderColor: colors.white,
     backgroundColor: colors.accent,
   },
   shutterRec: { backgroundColor: colors.danger, borderRadius: 18 },

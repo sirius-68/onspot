@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, SectionTitle } from '@/components/ui';
 import { track } from '@/lib/analytics';
 import { openDirections } from '@/lib/directions';
+import { openTicketLink } from '@/lib/tickets';
 import { colors, radii, spacing, typography } from '@/theme/tokens';
 
 import { capacityText, eventTimeText, queueText, spotsText, vibeText } from './eventFormat';
@@ -51,10 +52,7 @@ export function VenueDetails({ venue }: { venue: VenueDetail }) {
             {!!e.ticket_url && e.spots_left !== 0 && (
               <Button
                 title="Get tickets"
-                onPress={() => {
-                  track('ticket_link_opened', { venue_id: venue.id });
-                  void Linking.openURL(e.ticket_url as string);
-                }}
+                onPress={() => openTicketLink(e.ticket_url as string, venue.id)}
               />
             )}
           </View>

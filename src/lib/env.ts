@@ -10,10 +10,10 @@ export type AppEnv = {
   demoMode: boolean;
 };
 
-// Free dark basemap for development (CARTO Dark Matter, attribution shown on the map).
+// Free light basemap for development (CARTO Voyager, attribution shown on the map).
 // For a commercial launch, point EXPO_PUBLIC_MAP_STYLE_URL at your own or a paid style
 // (e.g. MapTiler, Stadia Maps) — see README.
-export const DEFAULT_MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+export const DEFAULT_MAP_STYLE = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
 
 // Dev sample area until the launch city is chosen: London, Shoreditch.
 const FALLBACK_CENTER = { lat: 51.5246, lng: -0.0781 };

@@ -18,6 +18,7 @@ import type { LatLng, VenueCategory } from '@/features/venues/types';
 
 import {
   demoAnchor,
+  demoVenuePhotos,
   demoVenueDetail,
   demoVenueIds,
   demoVenueName,
@@ -26,6 +27,7 @@ import {
   type DemoOverlay,
   searchDemoVenues,
 } from './demo';
+import { demoAvatar } from './demoMedia';
 import { env } from './env';
 
 const STORAGE_KEY = 'onspot.demo.v1';
@@ -54,6 +56,36 @@ type DemoSquad = {
 
 type DemoEvent = VenueDetail['events'][number];
 
+type DemoMessage = {
+  id: string;
+  /** 'me' or a sample person's username */
+  sender: string;
+  kind: 'text' | 'split';
+  body: string | null;
+  amount_minor: number | null;
+  currency: string | null;
+  paid_at: string | null;
+  created_at: string;
+};
+
+type DemoConversation = {
+  id: string;
+  username: string;
+  last_read_at: string;
+  messages: DemoMessage[];
+};
+
+/** A clip in the demo: either one you recorded or a sample photo from a sample person. */
+type FeedClip = {
+  id: string;
+  venue_id: string;
+  author: string; // 'me' or username
+  storage_path: string;
+  source: 'user' | 'host' | 'spotter';
+  published_at: string;
+  duration_s: number | null;
+};
+
 export type DemoState = {
   profile: MyProfile;
   hosted: string[];
@@ -69,6 +101,9 @@ export type DemoState = {
   squads: DemoSquad[];
   friends: FriendRow[];
   reports: string[];
+  /** Clip ids you gave a fire to. */
+  reactions: string[];
+  conversations: DemoConversation[];
 };
 
 /** Sample people for friends, squads and admin tools. */
@@ -87,18 +122,132 @@ function person(username: string, state: FriendRow['state'], requestId: string):
     user_id: p.id,
     username,
     display_name: p.display_name,
-    avatar_url: null,
+    avatar_url: demoAvatar(p.display_name),
     state,
   };
 }
 
-export function initialDemoState(): DemoState {
+/**
+ * Sample posts: photos sample people "posted" at venues, always relative to now so the demo
+ * feels live. [username, venue, minutes ago for each photo]
+ */
+const SAMPLE_POSTS: [string, string, number[]][] = [
+  ['amara', 'demo-3', [6, 9, 14]],
+  ['tunde', 'demo-1', [18, 25]],
+  ['zoe', 'demo-5', [38, 44, 47]],
+  ['leo', 'demo-9', [52, 58]],
+  ['kemi', 'demo-11', [170, 175]],
+  ['amara', 'demo-6', [300, 310]],
+  ['tunde', 'demo-12', [420]],
+];
+
+function sampleClips(now: Date): FeedClip[] {
+  const out: FeedClip[] = [];
+  for (const [author, venueId, minutes] of SAMPLE_POSTS) {
+    const photos = demoVenuePhotos(venueId);
+    minutes.forEach((m, i) => {
+      const photo = photos[i % Math.max(photos.length, 1)];
+      if (!photo) return;
+      out.push({
+        id: `sample-${author}-${venueId}-${i}`,
+        venue_id: venueId,
+        author,
+        storage_path: `sample:${photo}`,
+        source: author === 'leo' ? 'spotter' : 'user',
+        published_at: new Date(now.getTime() - m * 60_000).toISOString(),
+        duration_s: null,
+      });
+    });
+  }
+  return out;
+}
+
+/** A stable "fires" count for sample clips. */
+function baseReactions(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 33 + id.charCodeAt(i)) >>> 0;
+  return 3 + (h % 22);
+}
+
+const REPLIES = ['🔥 see you there!', 'Omw, 10 mins', 'Haha yes', 'Bet. Saving you a spot', '👀👀'];
+
+function seedConversations(now: Date): DemoConversation[] {
+  const at = (minutesAgo: number) => new Date(now.getTime() - minutesAgo * 60_000).toISOString();
+  return [
+    {
+      id: 'chat-amara',
+      username: 'amara',
+      last_read_at: at(60),
+      messages: [
+        {
+          id: 'm-a1',
+          sender: 'amara',
+          kind: 'text',
+          body: 'We’re locking in plans for Afro Fridays tonight. Can you send your share for the tickets?',
+          amount_minor: null,
+          currency: null,
+          paid_at: null,
+          created_at: at(11 * 60),
+        },
+        {
+          id: 'm-a2',
+          sender: 'amara',
+          kind: 'split',
+          body: 'Afro Fridays tickets',
+          amount_minor: 1500,
+          currency: 'GBP',
+          paid_at: null,
+          created_at: at(11 * 60 - 1),
+        },
+        {
+          id: 'm-a3',
+          sender: 'me',
+          kind: 'text',
+          body: 'On it! Please confirm if the others are going.',
+          amount_minor: null,
+          currency: null,
+          paid_at: null,
+          created_at: at(70),
+        },
+        {
+          id: 'm-a4',
+          sender: 'amara',
+          kind: 'text',
+          body: 'Tunde’s in. Zoe is deciding 😅',
+          amount_minor: null,
+          currency: null,
+          paid_at: null,
+          created_at: at(8),
+        },
+      ],
+    },
+    {
+      id: 'chat-tunde',
+      username: 'tunde',
+      last_read_at: at(120),
+      messages: [
+        {
+          id: 'm-t1',
+          sender: 'tunde',
+          kind: 'text',
+          body: 'Neon Basement is packed already 🔥 queue is moving though',
+          amount_minor: null,
+          currency: null,
+          paid_at: null,
+          created_at: at(20),
+        },
+      ],
+    },
+  ];
+}
+
+export function initialDemoState(now: Date = new Date()): DemoState {
   return {
     profile: {
       id: DEMO_USER_ID,
       username: 'guest',
       display_name: 'Guest',
-      avatar_url: null,
+      avatar_url: demoAvatar('Guest'),
       ghost_mode: false,
       role: 'admin',
     },
@@ -109,6 +258,8 @@ export function initialDemoState(): DemoState {
     status: {},
     events: {},
     squads: [],
+    reactions: [],
+    conversations: seedConversations(now),
     friends: [
       person('amara', 'friend', 'req-amara'),
       person('tunde', 'friend', 'req-tunde'),
@@ -208,15 +359,94 @@ export class DemoBackend {
     for (const listener of this.listeners) listener('SIGNED_IN', this.session);
   }
 
-  private overlay(s: DemoState): DemoOverlay {
+  /** Every published clip: sample photos plus what you recorded, newest first. */
+  private allClips(s: DemoState): FeedClip[] {
+    const mine: FeedClip[] = s.clips
+      .filter((c) => c.published_at)
+      .map((c) => ({
+        id: c.id,
+        venue_id: c.venue_id,
+        author: 'me',
+        storage_path: c.storage_path,
+        source: c.source,
+        published_at: c.published_at as string,
+        duration_s: c.duration_s,
+      }));
+    return [...mine, ...sampleClips(this.now())]
+      .filter((c) => !s.reports.includes(c.id))
+      .sort((a, b) => b.published_at.localeCompare(a.published_at));
+  }
+
+  private liveClips(s: DemoState): FeedClip[] {
     const cutoff = this.now().getTime() - LIVE_WINDOW_MS;
-    const liveClips: Record<string, number> = {};
-    for (const c of s.clips) {
-      if (c.published_at && Date.parse(c.published_at) > cutoff && !s.reports.includes(c.id)) {
-        liveClips[c.venue_id] = (liveClips[c.venue_id] ?? 0) + 1;
-      }
+    return this.allClips(s).filter((c) => Date.parse(c.published_at) > cutoff);
+  }
+
+  private isFriend(s: DemoState, username: string) {
+    return s.friends.some((f) => f.username === username && f.state === 'friend');
+  }
+
+  private authorInfo(s: DemoState, author: string) {
+    if (author === 'me') {
+      return {
+        id: DEMO_USER_ID,
+        username: s.profile.username,
+        display_name: s.profile.display_name,
+        avatar_url: s.profile.avatar_url,
+      };
     }
+    const p = PEOPLE[author]!;
+    return {
+      id: p.id,
+      username: author,
+      display_name: p.display_name,
+      avatar_url: demoAvatar(p.display_name),
+    };
+  }
+
+  private overlay(s: DemoState): DemoOverlay {
+    const liveClips: Record<string, number> = {};
+    for (const c of this.liveClips(s)) liveClips[c.venue_id] = (liveClips[c.venue_id] ?? 0) + 1;
     return { liveClips, status: s.status, events: s.events, hosted: s.hosted };
+  }
+
+  /** Map card badge: the friend (or you) who posted at each venue most recently. */
+  private badges(s: DemoState): Record<string, { url: string | null; name: string }> {
+    const out: Record<string, { url: string | null; name: string }> = {};
+    for (const c of this.allClips(s)) {
+      if (out[c.venue_id]) continue;
+      if (c.author !== 'me' && !this.isFriend(s, c.author)) continue;
+      const a = this.authorInfo(s, c.author);
+      out[c.venue_id] = { url: a.avatar_url, name: a.display_name ?? a.username };
+    }
+    return out;
+  }
+
+  private conversationRow(s: DemoState, c: DemoConversation) {
+    const now = this.now().getTime();
+    const visible = c.messages.filter((m) => Date.parse(m.created_at) <= now);
+    const last = visible[visible.length - 1];
+    const p = PEOPLE[c.username]!;
+    return {
+      conversation_id: c.id,
+      other_user_id: p.id,
+      username: c.username,
+      display_name: p.display_name,
+      avatar_url: demoAvatar(p.display_name),
+      last_kind: last?.kind ?? null,
+      last_body: last?.body ?? null,
+      last_amount_minor: last?.amount_minor ?? null,
+      last_currency: last?.currency ?? null,
+      last_sender_is_me: last?.sender === 'me',
+      last_at: last?.created_at ?? c.last_read_at,
+      unread: visible.filter((m) => m.sender !== 'me' && m.created_at > c.last_read_at).length,
+    };
+  }
+
+  private conversation(s: DemoState, id: unknown): DemoConversation {
+    const c = s.conversations.find((x) => x.id === id);
+    if (!c) throw new DemoError('not_member');
+    return c;
   }
 
   private anchor(): LatLng {
@@ -296,7 +526,14 @@ export class DemoBackend {
           tonightOnly: Boolean(p.p_tonight_only),
         };
         const center = { lat: Number(p.origin_lat), lng: Number(p.origin_lng) };
-        return searchDemoVenues(center, filters, Number(p.radius_m ?? 3000), this.overlay(s));
+        const badges = this.badges(s);
+        return searchDemoVenues(center, filters, Number(p.radius_m ?? 3000), this.overlay(s)).map(
+          (v) => ({
+            ...v,
+            badge_avatar_url: badges[v.id]?.url ?? null,
+            badge_name: badges[v.id]?.name ?? null,
+          }),
+        );
       }
       case 'get_venue': {
         this.anchor();
@@ -353,28 +590,22 @@ export class DemoBackend {
         clip.published_at = now.toISOString();
         break;
       }
-      case 'venue_live_clips': {
-        const cutoff = now.getTime() - LIVE_WINDOW_MS;
-        return s.clips
-          .filter(
-            (c) =>
-              c.venue_id === p.p_venue_id &&
-              c.published_at &&
-              Date.parse(c.published_at) > cutoff &&
-              !s.reports.includes(c.id),
-          )
-          .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
-          .map((c) => ({
-            id: c.id,
-            venue_id: c.venue_id,
-            author_id: DEMO_USER_ID,
-            storage_path: c.storage_path,
-            source: c.source,
-            published_at: c.published_at,
-            duration_s: c.duration_s,
-            author_username: s.profile.username,
-          }));
-      }
+      case 'venue_live_clips':
+        return this.liveClips(s)
+          .filter((c) => c.venue_id === p.p_venue_id)
+          .map((c) => {
+            const a = this.authorInfo(s, c.author);
+            return {
+              id: c.id,
+              venue_id: c.venue_id,
+              author_id: a.id,
+              storage_path: c.storage_path,
+              source: c.source,
+              published_at: c.published_at,
+              duration_s: c.duration_s,
+              author_username: a.username,
+            };
+          });
       case 'report_clip':
         if (!s.reports.includes(String(p.p_clip_id))) s.reports.push(String(p.p_clip_id));
         break;
@@ -432,6 +663,145 @@ export class DemoBackend {
       case 'set_ghost_mode':
         s.profile = { ...s.profile, ghost_mode: Boolean(p.p_on) };
         break;
+
+      // Feed
+      case 'friends_feed': {
+        const dayAgo = now.getTime() - 24 * 3600_000;
+        return this.allClips(s)
+          .filter((c) => Date.parse(c.published_at) > dayAgo)
+          .filter((c) => c.author === 'me' || this.isFriend(s, c.author))
+          .map((c) => {
+            const a = this.authorInfo(s, c.author);
+            const mine = s.reactions.includes(c.id);
+            return {
+              clip_id: c.id,
+              venue_id: c.venue_id,
+              venue_name: demoVenueName(c.venue_id) ?? 'Venue',
+              venue_cover_url: demoVenuePhotos(c.venue_id)[0] ?? null,
+              author_id: a.id,
+              username: a.username,
+              display_name: a.display_name,
+              avatar_url: a.avatar_url,
+              storage_path: c.storage_path,
+              published_at: c.published_at,
+              reactions: (c.author === 'me' ? 0 : baseReactions(c.id)) + (mine ? 1 : 0),
+              i_reacted: mine,
+            };
+          });
+      }
+      case 'toggle_reaction': {
+        const id = String(p.p_clip_id);
+        const clip = this.allClips(s).find((c) => c.id === id);
+        if (!clip) throw new DemoError('unknown_clip');
+        s.reactions = s.reactions.includes(id)
+          ? s.reactions.filter((r) => r !== id)
+          : [...s.reactions, id];
+        await this.save();
+        return (clip.author === 'me' ? 0 : baseReactions(id)) + (s.reactions.includes(id) ? 1 : 0);
+      }
+
+      // Chats
+      case 'open_direct_conversation': {
+        const username = Object.keys(PEOPLE).find((u) => PEOPLE[u]!.id === p.p_user_id);
+        if (!username || !this.isFriend(s, username)) throw new DemoError('friends_only');
+        let c = s.conversations.find((x) => x.username === username);
+        if (!c) {
+          c = { id: `chat-${username}`, username, last_read_at: now.toISOString(), messages: [] };
+          s.conversations.push(c);
+          await this.save();
+        }
+        return c.id;
+      }
+      case 'my_conversations':
+        return s.conversations
+          .map((c) => this.conversationRow(s, c))
+          .sort((a, b) => b.last_at.localeCompare(a.last_at));
+      case 'conversation_messages': {
+        const c = this.conversation(s, p.p_conversation_id);
+        c.last_read_at = now.toISOString();
+        await this.save();
+        const person = PEOPLE[c.username]!;
+        return c.messages
+          .filter((m) => Date.parse(m.created_at) <= now.getTime())
+          .map((m) => ({
+            id: m.id,
+            sender_id: m.sender === 'me' ? DEMO_USER_ID : person.id,
+            kind: m.kind,
+            body: m.body,
+            amount_minor: m.amount_minor,
+            currency: m.currency,
+            paid_at: m.paid_at,
+            created_at: m.created_at,
+          }));
+      }
+      case 'send_message':
+      case 'send_split_request': {
+        const c = this.conversation(s, p.p_conversation_id);
+        const isSplit = name === 'send_split_request';
+        if (!isSplit && !String(p.p_body ?? '').trim()) throw new DemoError('empty_message');
+        const amount = Number(p.p_amount_minor);
+        if (isSplit && (!Number.isInteger(amount) || amount <= 0 || amount > 1_000_000))
+          throw new DemoError('invalid_amount');
+        const id = newId('msg');
+        c.messages.push({
+          id,
+          sender: 'me',
+          kind: isSplit ? 'split' : 'text',
+          body: isSplit ? String(p.p_note ?? '').trim() || null : String(p.p_body).trim(),
+          amount_minor: isSplit ? amount : null,
+          currency: isSplit ? String(p.p_currency ?? 'GBP').toUpperCase() : null,
+          paid_at: null,
+          created_at: now.toISOString(),
+        });
+        // Your friend answers a moment later (it shows up on the next refresh).
+        c.messages.push({
+          id: newId('msg'),
+          sender: c.username,
+          kind: 'text',
+          body: isSplit ? 'Got it, sending now 👍' : REPLIES[c.messages.length % REPLIES.length]!,
+          amount_minor: null,
+          currency: null,
+          paid_at: null,
+          created_at: new Date(now.getTime() + 2500).toISOString(),
+        });
+        await this.save();
+        return id;
+      }
+      case 'mark_split_paid': {
+        const msg = s.conversations.flatMap((c) => c.messages).find((m) => m.id === p.p_message_id);
+        if (!msg || msg.kind !== 'split') throw new DemoError('unknown_message');
+        if (msg.sender === 'me') throw new DemoError('cannot_pay_own_request');
+        msg.paid_at ??= now.toISOString();
+        break;
+      }
+
+      // Plans
+      case 'events_tonight': {
+        const center = { lat: Number(p.origin_lat), lng: Number(p.origin_lng) };
+        const radius = Number(p.radius_m ?? 5000);
+        const overlay = this.overlay(s);
+        return demoVenues(center, overlay)
+          .filter((v) => v.distance_m <= radius)
+          .flatMap((v) =>
+            (demoVenueDetail(v.id, now, overlay)?.events ?? []).map((e) => ({
+              event_id: e.id,
+              venue_id: v.id,
+              venue_name: v.name,
+              category: v.category,
+              cover_photo_url: v.cover_photo_url,
+              title: e.title,
+              starts_at: e.starts_at,
+              ends_at: e.ends_at,
+              price_text: e.price_text,
+              ticket_url: e.ticket_url,
+              spots_left: e.spots_left,
+              distance_m: v.distance_m,
+              lat: v.lat,
+              lng: v.lng,
+            })),
+          )
+          .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+      }
 
       // Squads
       case 'create_squad': {
@@ -613,7 +983,11 @@ export class DemoBackend {
           };
         }
       },
-      getPublicUrl: (path: string) => ({ data: { publicUrl: this.state?.files[path] ?? '' } }),
+      getPublicUrl: (path: string) => ({
+        data: {
+          publicUrl: path.startsWith('sample:') ? path.slice(7) : (this.state?.files[path] ?? ''),
+        },
+      }),
     }),
   };
 

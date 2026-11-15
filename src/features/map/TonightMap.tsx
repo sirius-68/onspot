@@ -5,12 +5,11 @@ import {
   Layer,
   Map,
   Marker,
-  UserLocation,
 } from '@maplibre/maplibre-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 
-import { FriendBubble } from '@/components/FriendBubble';
+import { FriendBubble, MapBubble } from '@/components/FriendBubble';
 import { VenuePin } from '@/components/VenuePin';
 import type { FriendLocation } from '@/features/friends/api';
 import type { LatLng, NearbyVenue } from '@/features/venues/types';
@@ -26,6 +25,12 @@ export type TonightMapProps = {
   friends?: FriendLocation[];
   selectedId: string | null;
   onSelect: (venue: NearbyVenue | null) => void;
+  /** Pan here (e.g. the venue you swiped to). */
+  focus?: LatLng | null;
+  /** Your avatar, drawn at your position. */
+  me?: { name: string; avatarUrl: string | null } | null;
+  /** Changes when the locate button is pressed, to re-centre on you. */
+  recenterKey?: number;
 };
 
 /**
@@ -39,6 +44,9 @@ export function TonightMap({
   friends = [],
   selectedId,
   onSelect,
+  focus = null,
+  me = null,
+  recenterKey = 0,
 }: TonightMapProps) {
   const cameraRef = useRef<CameraRef>(null);
   const [zoom, setZoom] = useState(15);
@@ -50,7 +58,18 @@ export function TonightMap({
   // user's own pans and zooms aren't reset on every render.
   useEffect(() => {
     cameraRef.current?.easeTo({ center: [center.lng, center.lat], zoom: 15, duration: 600 });
-  }, [center.lat, center.lng]);
+  }, [center.lat, center.lng, recenterKey]);
+
+  useEffect(() => {
+    if (!focus) return;
+    cameraRef.current?.easeTo({
+      center: [focus.lng, focus.lat],
+      zoom: Math.max(zoom, PHOTO_PIN_MIN_ZOOM + 0.5),
+      duration: 450,
+    });
+    // Zoom is read, not followed: panning shouldn't re-trigger when the user zooms.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.lat, focus?.lng]);
 
   return (
     <Map
@@ -64,7 +83,11 @@ export function TonightMap({
       onRegionDidChange={(e) => setZoom(e.nativeEvent.zoom)}
     >
       <Camera ref={cameraRef} initialViewState={{ center: [center.lng, center.lat], zoom: 15 }} />
-      {showUserLocation && <UserLocation />}
+      {showUserLocation && (
+        <Marker id="me" lngLat={[center.lng, center.lat]} anchor="center">
+          <MapBubble name={me?.name ?? 'You'} avatarUrl={me?.avatarUrl} me size={50} />
+        </Marker>
+      )}
 
       <GeoJSONSource
         id="venues"
@@ -94,9 +117,9 @@ export function TonightMap({
           filter={['has', 'point_count']}
           maxzoom={PHOTO_PIN_MIN_ZOOM}
           paint={{
-            'circle-color': colors.accent,
+            'circle-color': colors.blue,
             'circle-opacity': 0.85,
-            'circle-stroke-color': colors.background,
+            'circle-stroke-color': colors.white,
             'circle-stroke-width': 2,
             'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 30, 26],
           }}
@@ -111,7 +134,7 @@ export function TonightMap({
             'text-size': 13,
             'text-allow-overlap': true,
           }}
-          paint={{ 'text-color': colors.text }}
+          paint={{ 'text-color': colors.white }}
         />
         <Layer
           id="venue-dots"
@@ -119,9 +142,9 @@ export function TonightMap({
           filter={['!', ['has', 'point_count']]}
           maxzoom={PHOTO_PIN_MIN_ZOOM}
           paint={{
-            'circle-color': colors.accent,
+            'circle-color': colors.blue,
             'circle-radius': 6,
-            'circle-stroke-color': colors.background,
+            'circle-stroke-color': colors.white,
             'circle-stroke-width': 2,
           }}
         />
@@ -133,7 +156,7 @@ export function TonightMap({
             key={venue.id}
             id={`venue-${venue.id}`}
             lngLat={[venue.lng, venue.lat]}
-            anchor="center"
+            anchor="bottom"
             selected={venue.id === selectedId}
           >
             <VenuePin venue={venue} selected={venue.id === selectedId} onPress={onSelect} />
